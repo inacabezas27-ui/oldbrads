@@ -1,21 +1,27 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Goleador, Temporada } from '../lib/types'
-import { Badge, Card, Spinner } from '../components/ui'
+import { Badge, Card, Input, Spinner } from '../components/ui'
 
 export default function Temporadas() {
   const [temps, setTemps] = useState<Temporada[]>([])
   const [goleadores, setGoleadores] = useState<Goleador[]>([])
   const [loading, setLoading] = useState(true)
+  const [conPartidos, setConPartidos] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const load = async () => {
-      const [t, g] = await Promise.all([
+      const [t, g, p] = await Promise.all([
         supabase.from('temporadas').select('*').order('orden'),
         supabase.from('goleadores').select('*').order('goles', { ascending: false }),
+        supabase.from('partidos').select('temporada_id').not('goles_favor', 'is', null),
       ])
       setTemps(t.data ?? [])
       setGoleadores(g.data ?? [])
+      // Las que tienen partidos cargados se calculan solas; las viejas siguen
+      // con los números escritos a mano.
+      setConPartidos(new Set(((p.data ?? []) as { temporada_id: string | null }[])
+        .map((x) => x.temporada_id).filter((x): x is string => Boolean(x))))
       setLoading(false)
     }
     load()
@@ -47,9 +53,27 @@ export default function Temporadas() {
                 )}
               </div>
               <div className="p-5">
-                <div className="mb-4 flex items-end gap-1">
-                  <span className="text-3xl font-black tabular-nums text-ink-900">{t.puntos}</span>
-                  <span className="mb-1 text-sm text-slate-400">pts{t.posicion ? ` · ${t.posicion}°` : ''}</span>
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                  <div className="flex items-end gap-1">
+                    <span className="text-3xl font-black tabular-nums text-ink-900">{t.puntos}</span>
+                    <span className="mb-1 text-sm text-slate-400">pts</span>
+                  </div>
+                  {/* La posición depende del resto de la liga, así que es el
+                      único número que hay que escribir a mano. */}
+                  <label className="flex items-center gap-1.5 text-xs text-slate-500">
+                    Puesto
+                    <Input
+                      type="number"
+                      min="1"
+                      className="w-16 py-1 text-center"
+                      value={t.posicion ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? null : Number(e.target.value)
+                        setTemps((prev) => prev.map((x) => (x.id === t.id ? { ...x, posicion: v } : x)))
+                        supabase.from('temporadas').update({ posicion: v }).eq('id', t.id).then(() => {})
+                      }}
+                    />
+                  </label>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded-lg bg-brand-50 py-2"><p className="text-lg font-bold text-brand-700">{t.g}</p><p className="text-[10px] uppercase text-slate-400">Ganados</p></div>
@@ -62,7 +86,12 @@ export default function Temporadas() {
                   <span>DG <b className={t.gf - t.gc >= 0 ? 'text-brand-600' : 'text-rose-600'}>{t.gf - t.gc >= 0 ? '+' : ''}{t.gf - t.gc}</b></span>
                   <span>{winRate}% <span className="text-slate-400">victorias</span></span>
                 </div>
-                {t.notas && <p className="mt-3 text-xs leading-relaxed text-slate-400">{t.notas}</p>}
+                <p className="mt-3 text-[11px] text-slate-400">
+                  {conPartidos.has(t.id)
+                    ? 'Se calcula solo con los partidos cargados. Solo el puesto se escribe a mano.'
+                    : 'Números históricos cargados a mano: esta temporada no tiene partidos en la plataforma.'}
+                </p>
+                {t.notas && <p className="mt-2 text-xs leading-relaxed text-slate-400">{t.notas}</p>}
               </div>
             </Card>
           )
@@ -81,7 +110,10 @@ export default function Temporadas() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-slate-400">Conteo de las 3 temporadas. Cuando carguemos los partidos, esto se calcula solo.</p>
+        <p className="mt-3 text-xs text-slate-400">
+          Conteo histórico de las 3 primeras temporadas, cargado a mano. Los goles del Clausura 2026 en adelante
+          salen de los partidos y se ven en Estadísticas.
+        </p>
       </Card>
     </div>
   )
