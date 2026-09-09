@@ -7,7 +7,7 @@ import {
   type PartidoJugador,
   type Temporada,
 } from '../lib/types'
-import { EmptyState, PageHeader, Select, Spinner, StatCard } from '../components/ui'
+import { Badge, Card, EmptyState, PageHeader, Select, Spinner, StatCard } from '../components/ui'
 
 /* Una fila por jugador con todo lo acumulado. */
 type Fila = {
@@ -139,6 +139,98 @@ export default function Estadisticas() {
 
   const pctDe = (f: Fila) => (f.convocado ? Math.round((f.fue / f.convocado) * 100) : 0)
 
+  const temporadaElegida = useMemo(
+    () => temporadas.find((t) => t.id === temporadaId) ?? null,
+    [temporadas, temporadaId],
+  )
+
+  /* Las temporadas viejas no tienen partidos cargados, solo sus totales. Se
+     muestran igual: son la historia del club. */
+  const equipoMostrado = useMemo(() => {
+    if (partidosContados.length > 0) return equipo
+    const t = temporadaElegida
+    if (t && t.pj > 0) {
+      return { jugados: t.pj, g: t.g, e: t.e, p: t.p, gf: t.gf, gc: t.gc,
+               dg: t.gf - t.gc, pct: t.pj ? Math.round((t.g / t.pj) * 100) : 0 }
+    }
+    return null
+  }, [partidosContados, equipo, temporadaElegida])
+
+  const historia = useMemo(() => {
+    const con = temporadas.filter((t) => t.pj > 0)
+    const tot = con.reduce(
+      (a, t) => ({ pj: a.pj + t.pj, g: a.g + t.g, e: a.e + t.e, p: a.p + t.p,
+                   gf: a.gf + t.gf, gc: a.gc + t.gc, puntos: a.puntos + t.puntos }),
+      { pj: 0, g: 0, e: 0, p: 0, gf: 0, gc: 0, puntos: 0 },
+    )
+    return { temporadas: con, tot }
+  }, [temporadas])
+
+  const TablaHistoria = () => (
+    <Card className="mt-6 overflow-hidden p-0">
+      <div className="border-b border-slate-100 p-5">
+        <h2 className="font-bold text-ink-900">Historia del club</h2>
+        <p className="mt-0.5 text-sm text-slate-500">
+          Todas las temporadas, incluidas las anteriores a la plataforma.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-4 py-2.5">Temporada</th>
+              {['PJ', 'G', 'E', 'P', 'GF', 'GC', 'DG', 'Pts', 'Puesto'].map((h) => (
+                <th key={h} className="px-3 py-2.5 text-center">{h}</th>
+              ))}
+              <th className="px-4 py-2.5">Cierre</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {historia.temporadas.map((t) => (
+              <tr key={t.id} className="hover:bg-slate-50">
+                <td className="whitespace-nowrap px-4 py-2 font-medium text-ink-900">{t.nombre}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-500">{t.pj}</td>
+                <td className="px-3 py-2 text-center tabular-nums font-semibold text-brand-700">{t.g}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-600">{t.e}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-rose-600">{t.p}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-600">{t.gf}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-600">{t.gc}</td>
+                <td className={`px-3 py-2 text-center tabular-nums font-semibold ${t.gf - t.gc >= 0 ? 'text-brand-700' : 'text-rose-600'}`}>
+                  {t.gf - t.gc >= 0 ? '+' : ''}{t.gf - t.gc}
+                </td>
+                <td className="px-3 py-2 text-center font-black tabular-nums text-ink-900">{t.puntos}</td>
+                <td className="px-3 py-2 text-center tabular-nums text-slate-500">{t.posicion ? `${t.posicion}°` : '—'}</td>
+                <td className="px-4 py-2">
+                  {t.resultado && (
+                    <Badge tone={t.resultado.includes('Subcampeón') ? 'amber' : 'slate'}>{t.resultado}</Badge>
+                  )}
+                </td>
+              </tr>
+            ))}
+            <tr className="bg-slate-50 font-bold">
+              <td className="px-4 py-2.5 text-ink-900">Desde el primer partido</td>
+              <td className="px-3 py-2.5 text-center tabular-nums">{historia.tot.pj}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-brand-700">{historia.tot.g}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums">{historia.tot.e}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-rose-600">{historia.tot.p}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums">{historia.tot.gf}</td>
+              <td className="px-3 py-2.5 text-center tabular-nums">{historia.tot.gc}</td>
+              <td className={`px-3 py-2.5 text-center tabular-nums ${historia.tot.gf - historia.tot.gc >= 0 ? 'text-brand-700' : 'text-rose-600'}`}>
+                {historia.tot.gf - historia.tot.gc >= 0 ? '+' : ''}{historia.tot.gf - historia.tot.gc}
+              </td>
+              <td className="px-3 py-2.5 text-center tabular-nums">{historia.tot.puntos}</td>
+              <td className="px-3 py-2.5" colSpan={2} />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="px-4 py-3 text-xs text-slate-400">
+        El detalle por jugador existe solo desde que los partidos se cargan en la plataforma. De las temporadas
+        anteriores se conservan los totales del equipo.
+      </p>
+    </Card>
+  )
+
   const ordenadas = useMemo(() => {
     const v = (f: Fila): number | string =>
       orden.k === 'nombre' ? nombreCorto(f.jugador) : orden.k === 'pct' ? pctDe(f) : (f[orden.k as keyof Fila] as number)
@@ -156,12 +248,41 @@ export default function Estadisticas() {
 
   if (partidosContados.length === 0) {
     return (
-      <div className="mx-auto max-w-5xl">
-        <PageHeader title="Estadísticas" subtitle="Todo lo que se acumula partido a partido." />
-        <EmptyState
-          title="Todavía no hay partidos jugados"
-          hint="Las estadísticas aparecen cuando un partido pasa de «Citación» a «Jugado» en la sección Partidos."
+      <div className="mx-auto max-w-6xl">
+        <PageHeader
+          title="Estadísticas"
+          subtitle={temporadaElegida ? temporadaElegida.nombre : 'Todo lo que se acumula partido a partido.'}
+          action={
+            temporadas.length > 0 ? (
+              <Select value={temporadaId} onChange={(e) => setTemporadaId(e.target.value)} className="w-56">
+                <option value="">Todas las temporadas</option>
+                {temporadas.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </Select>
+            ) : undefined
+          }
         />
+        {equipoMostrado ? (
+          <>
+            <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+              <StatCard label="Jugados" value={String(equipoMostrado.jugados)} />
+              <StatCard label="Ganados" value={String(equipoMostrado.g)} />
+              <StatCard label="Empatados" value={String(equipoMostrado.e)} />
+              <StatCard label="Perdidos" value={String(equipoMostrado.p)} />
+              <StatCard label="Goles a favor" value={String(equipoMostrado.gf)} />
+              <StatCard label="Goles en contra" value={String(equipoMostrado.gc)} />
+              <StatCard label="% victorias" value={`${equipoMostrado.pct}%`} />
+            </div>
+            <p className="text-xs text-slate-400">
+              Temporada anterior a la plataforma: se conservan los totales del equipo, pero no hay detalle por jugador.
+            </p>
+          </>
+        ) : (
+          <EmptyState
+            title="Todavía no hay partidos jugados"
+            hint="Las estadísticas aparecen cuando un partido pasa de «Citación» a «Jugado» en la sección Partidos."
+          />
+        )}
+        <TablaHistoria />
       </div>
     )
   }
@@ -243,6 +364,8 @@ export default function Estadisticas() {
       <p className="mt-2 text-xs text-slate-400">
         Haz clic en cualquier encabezado para ordenar. Solo se cuentan los partidos que ya salieron de «Citación».
       </p>
+
+      <TablaHistoria />
     </div>
   )
 }
