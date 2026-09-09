@@ -12,10 +12,11 @@ import EncuestasJugador from './Encuestas'
 
 const BRONCE = '#c0782a'
 
-type Respuesta = 'si' | 'no' | 'duda'
+type Respuesta = 'si' | 'no' | 'duda' | 'lesionado'
 const RESPUESTAS: { valor: Respuesta; label: string; color: string }[] = [
   { valor: 'si', label: 'Voy', color: '#046c54' },
   { valor: 'duda', label: 'En duda', color: '#7a6a2e' },
+  { valor: 'lesionado', label: 'Lesionado', color: '#6b4a2f' },
   { valor: 'no', label: 'No voy', color: '#8a2f3b' },
 ]
 
@@ -236,7 +237,7 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
     const filas = (data ?? []) as { jugador_id: string; confirmado: Respuesta | null }[]
     setConteo({
       si: filas.filter((f) => f.confirmado === 'si').length,
-      duda: filas.filter((f) => f.confirmado === 'duda').length,
+      duda: filas.filter((f) => f.confirmado === 'duda' || f.confirmado === 'lesionado').length,
       no: filas.filter((f) => f.confirmado === 'no').length,
     })
     setRespuesta(filas.find((f) => f.jugador_id === jugadorId)?.confirmado ?? null)
@@ -284,7 +285,7 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
       <Sanciones jugadorId={jugadorId} />
       <CabeceraPartido partido={partido} etiqueta="Próximo partido" />
       <p className="mb-3 text-center text-sm text-slate-300">¿Vas a este partido?</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {RESPUESTAS.map((r) => (
           <button
             key={r.valor}
@@ -308,7 +309,7 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
       <div className="mt-6 rounded-xl bg-white/5 p-4 text-center text-sm ring-1 ring-white/10">
         <span className="font-black text-white">{conteo.si}</span> <span className="text-slate-400">van</span>
         <span className="mx-2 text-slate-600">·</span>
-        <span className="font-black text-white">{conteo.duda}</span> <span className="text-slate-400">en duda</span>
+        <span className="font-black text-white">{conteo.duda}</span> <span className="text-slate-400">en duda o lesionados</span>
         <span className="mx-2 text-slate-600">·</span>
         <span className="font-black text-white">{conteo.no}</span> <span className="text-slate-400">no van</span>
       </div>

@@ -132,6 +132,16 @@ export type Goleador = {
   created_at: string
 }
 
+/** Va, no va, en duda o lesionado. null = todavía no responde. */
+export type Confirmacion = 'si' | 'no' | 'duda' | 'lesionado' | null
+
+export const CONFIRMACIONES: { valor: Exclude<Confirmacion, null>; label: string; icono: string }[] = [
+  { valor: 'si', label: 'Va', icono: '✅' },
+  { valor: 'duda', label: 'En duda', icono: '❓' },
+  { valor: 'lesionado', label: 'Lesionado', icono: '🤕' },
+  { valor: 'no', label: 'No va', icono: '❌' },
+]
+
 /** El partido avanza en este orden y no se salta pasos. */
 export type EstadoPartido = 'citacion' | 'jugado' | 'votacion' | 'cerrado'
 
@@ -170,8 +180,8 @@ export type PartidoJugador = {
   /** Lo que le debe al equipo por faltar o llegar tarde (una promo, etc.). */
   sancion: string | null
   sancion_cumplida: boolean
-  /** Lo responde el propio jugador durante la citación. */
-  confirmado: 'si' | 'no' | 'duda' | null
+  /** Lo responde el jugador o lo marca la directiva durante la citación. */
+  confirmado: Confirmacion
   confirmado_at: string | null
   created_at: string
 }

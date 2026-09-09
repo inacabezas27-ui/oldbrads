@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { nombreCorto, type EstadoPartido, type Jugador, type Partido, type PartidoJugador, type Temporada } from '../lib/types'
+import { CONFIRMACIONES, nombreCorto, type Confirmacion, type EstadoPartido, type Jugador, type Partido, type PartidoJugador, type Temporada } from '../lib/types'
 import { fecha, hoyISO } from '../lib/format'
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Spinner } from '../components/ui'
 
@@ -227,20 +227,24 @@ export default function Partidos() {
       si: rows.filter((r) => r.confirmado === 'si').length,
       no: rows.filter((r) => r.confirmado === 'no').length,
       duda: rows.filter((r) => r.confirmado === 'duda').length,
+      lesionados: rows.filter((r) => r.confirmado === 'lesionado').length,
       sinResponder: rows.filter((r) => !r.confirmado).length,
     }),
     [rows],
   )
   const golesTotales = useMemo(() => rows.reduce((a, r) => a + (r.goles || 0), 0), [rows])
-  /* Los candidatos naturales a sanción: dijeron que iban y no aparecieron. */
+  /* Candidatos naturales a sanción: estaban citados (o dijeron que iban) y no
+     aparecieron, sin haber avisado que no venían. */
   const faltaronAvisando = useMemo(
-    () => rows.filter((r) => r.confirmado === 'si' && !r.asistio),
+    () => rows.filter((r) => !r.asistio && r.confirmado !== 'no' && r.confirmado !== 'lesionado'
+                             && (r.citado || r.confirmado === 'si')),
     [rows],
   )
   const sancionados = useMemo(() => rows.filter((r) => r.sancion), [rows])
   const asistieron = useMemo(() => rows.filter((r) => r.asistio).length, [rows])
   const puntuales = useMemo(() => rows.filter((r) => r.asistio && r.puntual === true).length, [rows])
   const atrasados = useMemo(() => rows.filter((r) => r.asistio && r.puntual === false).length, [rows])
+  const noLlegaron = useMemo(() => rows.filter((r) => r.citado && !r.asistio).length, [rows])
 
   if (loading) return <Spinner />
 
@@ -373,7 +377,8 @@ export default function Partidos() {
                 {detalle.estado === 'citacion' ? (
                   <p>
                     <b className="text-brand-700">{confirmaciones.si} van</b> · {confirmaciones.duda} en duda ·{' '}
-                    {confirmaciones.no} no van · {confirmaciones.sinResponder} sin responder
+                    {confirmaciones.lesionados} lesionados · {confirmaciones.no} no van ·{' '}
+                    {confirmaciones.sinResponder} sin responder
                   </p>
                 ) : (
                   <p>Citados: <b className="text-ink-900">{citados.length}</b></p>
@@ -396,6 +401,7 @@ export default function Partidos() {
               <span className="ml-auto text-xs text-slate-500">
                 Fueron <b className="text-ink-900">{asistieron}</b> · a la hora <b className="text-ink-900">{puntuales}</b>
                 {atrasados > 0 && <> · tarde <b className="text-rose-600">{atrasados}</b></>}
+                {noLlegaron > 0 && <> · citados que no llegaron <b className="text-rose-600">{noLlegaron}</b></>}
               </span>
             </div>
 
@@ -421,16 +427,30 @@ export default function Partidos() {
                     <tr key={r.id} className={r.citado || r.confirmado === 'si' ? '' : 'opacity-50'}>
                       <td className="whitespace-nowrap px-3 py-1.5 font-medium text-ink-900">{nombreCorto(r.jugador)}</td>
                       <td className="px-2 py-1.5 text-center">
-                        {r.confirmado === 'si' && <span title="Confirmó que va">✅</span>}
-                        {r.confirmado === 'no' && <span title="Avisó que no va">❌</span>}
-                        {r.confirmado === 'duda' && <span title="En duda">❓</span>}
-                        {!r.confirmado && <span className="text-slate-300">—</span>}
+                        {/* Editable: el jugador responde desde su celular, pero
+                            la directiva también lo marca (lesiones, avisos por
+                            WhatsApp, gente que no usa la app). */}
+                        <select
+                          value={r.confirmado ?? ''}
+                          onChange={(e) => updateRow(r.id, { confirmado: (e.target.value || null) as Confirmacion })}
+                          className="rounded border-0 bg-slate-50 px-1 py-1 text-xs ring-1 ring-slate-200 focus:ring-brand-500"
+                        >
+                          <option value="">—</option>
+                          {CONFIRMACIONES.map((c) => (
+                            <option key={c.valor} value={c.valor}>{c.icono} {c.label}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.citado} onChange={(e) => updateRow(r.id, { citado: e.target.checked })} /></td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={r.asistio} onChange={(e) => updateRow(r.id, { asistio: e.target.checked, puntual: e.target.checked ? r.puntual : null })} /></td>
                       <td className="px-2 py-1.5 text-center">
-                        {/* Tres estados: sin registrar no suma ni resta. Marcar
-                            "tarde" es una decisión de la directiva, no un vacío. */}
+                        {/* Si lo citaron y no llegó, no tiene sentido preguntar
+                            si fue puntual: se dice lo que pasó. */}
+                        {r.citado && !r.asistio ? (
+                          <span className="whitespace-nowrap rounded bg-rose-50 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700">
+                            No llegó
+                          </span>
+                        ) : (
                         <select
                           disabled={!r.asistio}
                           value={r.puntual === null ? '' : r.puntual ? 'si' : 'no'}
@@ -441,6 +461,7 @@ export default function Partidos() {
                           <option value="si">A la hora</option>
                           <option value="no">Tarde</option>
                         </select>
+                        )}
                       </td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.jugo} onChange={(e) => updateRow(r.id, { jugo: e.target.checked })} /></td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.titular} onChange={(e) => updateRow(r.id, { titular: e.target.checked })} /></td>
@@ -455,7 +476,8 @@ export default function Partidos() {
             </div>
             <p className="mt-2 text-xs text-slate-400">
               La media se recalcula sola: ir al partido +1 · a la hora +1 · gol +3 · asistencia +2 · punto de voto +1.
-              Resta: anotarse y no ir −3 · llegar tarde −1 · cuota atrasada −2. Dejar la puntualidad en «—» no suma ni resta.
+              Resta: estar citado y no llegar −3 · llegar tarde −1 · cuota atrasada −2. Quien avisa que no va, o está
+              lesionado, no pierde puntos. Dejar la puntualidad en «—» no suma ni resta.
             </p>
 
             {/* ---- Sanciones ----
