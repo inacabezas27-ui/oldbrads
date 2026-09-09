@@ -4,6 +4,12 @@ import Crest from './Crest'
 
 // La carta sube de material con la media: bronce -> plata (78) -> oro (88).
 
+/** Medidas de la carta chica. Se exportan para que quien la coloque reserve
+ *  el espacio exacto: si el contenedor es más angosto, la carta se desborda
+ *  y tapa lo que tenga al lado. */
+export const MINI_ANCHO = 78
+export const MINI_ALTO = Math.round(MINI_ANCHO / 0.7)
+
 function Silueta({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" className="h-full w-full">
@@ -33,7 +39,7 @@ export default function FifaCard({
     <button
       onClick={onClick}
       className={`group relative block ${onClick ? 'cursor-pointer transition hover:-translate-y-1' : 'cursor-default'}`}
-      style={{ width: mini ? 78 : '100%', maxWidth: mini ? 78 : 180, aspectRatio: '0.70' }}
+      style={{ width: mini ? MINI_ANCHO : '100%', maxWidth: mini ? MINI_ANCHO : 180, aspectRatio: '0.70' }}
     >
       <div
         className="relative h-full w-full overflow-hidden rounded-[12px] shadow-lg ring-1 ring-black/15"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { nombreCompleto, type Jugador } from '../lib/types'
 import { Modal, Spinner } from '../components/ui'
-import FifaCard from '../components/FifaCard'
+import FifaCard, { MINI_ALTO, MINI_ANCHO } from '../components/FifaCard'
 
 type Slot = { k: string; label: string; x: number; y: number }
 
@@ -163,8 +163,12 @@ export default function Formaciones() {
 
       {dt && (
         <div className="mb-3 flex items-center gap-3 rounded-xl bg-ink-900 p-3 text-white">
-          <div className="w-12"><FifaCard j={dt} mini dt /></div>
-          <div><p className="text-xs uppercase tracking-widest text-brand-300">Director Técnico</p><p className="font-bold">{nombreCompleto(dt)}</p></div>
+          <div className="shrink-0" style={{ width: MINI_ANCHO }}><FifaCard j={dt} mini dt /></div>
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-widest text-brand-300">Director Técnico</p>
+            <p className="truncate font-bold">{nombreCompleto(dt)}</p>
+            <p className="text-xs text-slate-400">Media {dt.carta_overall ?? 60}</p>
+          </div>
         </div>
       )}
 
@@ -217,7 +221,7 @@ export default function Formaciones() {
 
       {/* Ghost que sigue al puntero */}
       {ghost && (
-        <div className="pointer-events-none fixed z-[60] opacity-90" style={{ left: ghost.x - 30, top: ghost.y - 40, width: 62 }}>
+        <div className="pointer-events-none fixed z-[60] opacity-90" style={{ left: ghost.x - MINI_ANCHO / 2, top: ghost.y - MINI_ALTO / 2, width: MINI_ANCHO }}>
           <FifaCard j={ghost.j} mini />
         </div>
       )}
