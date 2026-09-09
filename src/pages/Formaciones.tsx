@@ -67,7 +67,11 @@ export default function Formaciones() {
 
   const byId = useMemo(() => new Map(jugadores.map((j) => [j.id, j])), [jugadores])
   const slots = FORMACIONES[tipo]
-  const asignados = new Set(Object.values(pos).filter(Boolean))
+  // Solo cuentan como asignados los que ocupan una posición DE ESTA formación.
+  // Al cambiar de esquema quedan guardadas posiciones de otros (4-3-3, 4-4-2…);
+  // si se contaran todas, esos jugadores no se dibujan en la cancha ni aparecen
+  // en suplentes, y desaparecen de la pantalla.
+  const asignados = new Set(slots.map((s) => pos[s.k]).filter(Boolean))
   const suplentes = jugadores.filter((j) => !asignados.has(j.id))
 
   const save = (t: string, p: Record<string, string>) => {
