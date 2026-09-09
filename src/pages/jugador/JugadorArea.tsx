@@ -276,14 +276,26 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  // Solo vota quien fue al partido, y solo por quienes jugaron: así el voto
+  // sale de lo que la persona vio en la cancha.
+  const [fui, setFui] = useState(false)
+  const [idsQueJugaron, setIdsQueJugaron] = useState<Set<string>>(new Set())
 
-  // uno no se vota a sí mismo
-  const plantel = plantelCompleto.filter((j) => j.id !== jugadorId && !j.es_dt)
+  const plantel = plantelCompleto.filter(
+    (j) => j.id !== jugadorId && !j.es_dt && idsQueJugaron.has(j.id),
+  )
 
   useEffect(() => {
     const load = async () => {
       setLoading(true)
       if (partido) {
+        const { data: participacion } = await supabase
+          .from('partido_jugadores').select('jugador_id, asistio, jugo')
+          .eq('partido_id', partido.id)
+        const filas = (participacion ?? []) as { jugador_id: string; asistio: boolean; jugo: boolean }[]
+        setFui(filas.some((f) => f.jugador_id === jugadorId && f.asistio))
+        setIdsQueJugaron(new Set(filas.filter((f) => f.jugo).map((f) => f.jugador_id)))
+
         const { data: votos } = await supabase
           .from('votos').select('votado_jugador_id, posicion')
           .eq('partido_id', partido.id).eq('votante_user_id', userId).order('posicion')
@@ -296,7 +308,7 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
       setLoading(false)
     }
     load()
-  }, [partido, userId])
+  }, [partido, userId, jugadorId])
 
   const setPick = (idx: number, val: string) => {
     setPicks((p) => p.map((x, i) => (i === idx ? val : x)))
@@ -327,11 +339,36 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
       </p>
     )
   }
+  if (!fui) {
+    return (
+      <div>
+        <CabeceraPartido partido={partido} etiqueta="Votación abierta" />
+        <p className="text-center text-sm text-slate-400">
+          Votan solo los que fueron al partido. Según la lista de la directiva, este no lo viste.
+        </p>
+        <p className="mt-2 text-center text-xs text-slate-500">
+          Si crees que hay un error, avísale a la directiva para que revise la asistencia.
+        </p>
+      </div>
+    )
+  }
+  if (plantel.length < 5) {
+    return (
+      <div>
+        <CabeceraPartido partido={partido} etiqueta="Votación abierta" />
+        <p className="text-center text-sm text-slate-400">
+          La directiva todavía no termina de cargar quiénes jugaron. En cuanto lo haga, podrás votar.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div>
       <CabeceraPartido partido={partido} etiqueta="Vota el partido" />
-      <p className="mb-3 text-center text-sm text-slate-300">Elige a los <b>5 mejores</b>, del 1° al 5°.</p>
+      <p className="mb-3 text-center text-sm text-slate-300">
+        Elige a los <b>5 mejores</b>, del 1° al 5°. Solo aparecen los que jugaron.
+      </p>
       <div className="space-y-3">
         {picks.map((val, idx) => (
           <div key={idx} className="flex items-center gap-3">
