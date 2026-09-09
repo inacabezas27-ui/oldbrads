@@ -163,9 +163,10 @@ export type PartidoJugador = {
   asistencias: number
   puntos_voto: number
   puntos_extra: number
-  /** Fue al partido (aunque no haya jugado) y llegó a la hora. */
+  /** Fue al partido, aunque no haya jugado. */
   asistio: boolean
-  puntual: boolean
+  /** null = sin registrar · true = a la hora · false = llegó tarde. */
+  puntual: boolean | null
   /** Lo responde el propio jugador durante la citación. */
   confirmado: 'si' | 'no' | 'duda' | null
   confirmado_at: string | null

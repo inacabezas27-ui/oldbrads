@@ -228,7 +228,8 @@ export default function Partidos() {
   )
   const golesTotales = useMemo(() => rows.reduce((a, r) => a + (r.goles || 0), 0), [rows])
   const asistieron = useMemo(() => rows.filter((r) => r.asistio).length, [rows])
-  const puntuales = useMemo(() => rows.filter((r) => r.asistio && r.puntual).length, [rows])
+  const puntuales = useMemo(() => rows.filter((r) => r.asistio && r.puntual === true).length, [rows])
+  const atrasados = useMemo(() => rows.filter((r) => r.asistio && r.puntual === false).length, [rows])
 
   if (loading) return <Spinner />
 
@@ -380,9 +381,10 @@ export default function Partidos() {
               <span className="text-xs font-semibold text-slate-500">Marcar de una vez:</span>
               <Button variant="secondary" onClick={() => marcarTodos({ asistio: true })}>Fueron todos los citados</Button>
               <Button variant="secondary" onClick={() => marcarTodos({ asistio: true, puntual: true })}>…y todos a la hora</Button>
-              <Button variant="secondary" onClick={() => marcarTodos({ asistio: false, puntual: false }, false)}>Limpiar asistencia</Button>
+              <Button variant="secondary" onClick={() => marcarTodos({ asistio: false, puntual: null }, false)}>Limpiar asistencia</Button>
               <span className="ml-auto text-xs text-slate-500">
                 Fueron <b className="text-ink-900">{asistieron}</b> · a la hora <b className="text-ink-900">{puntuales}</b>
+                {atrasados > 0 && <> · tarde <b className="text-rose-600">{atrasados}</b></>}
               </span>
             </div>
 
@@ -414,8 +416,21 @@ export default function Partidos() {
                         {!r.confirmado && <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.citado} onChange={(e) => updateRow(r.id, { citado: e.target.checked })} /></td>
-                      <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={r.asistio} onChange={(e) => updateRow(r.id, { asistio: e.target.checked, puntual: e.target.checked ? r.puntual : false })} /></td>
-                      <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-emerald-600" disabled={!r.asistio} checked={r.asistio && r.puntual} onChange={(e) => updateRow(r.id, { puntual: e.target.checked })} /></td>
+                      <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={r.asistio} onChange={(e) => updateRow(r.id, { asistio: e.target.checked, puntual: e.target.checked ? r.puntual : null })} /></td>
+                      <td className="px-2 py-1.5 text-center">
+                        {/* Tres estados: sin registrar no suma ni resta. Marcar
+                            "tarde" es una decisión de la directiva, no un vacío. */}
+                        <select
+                          disabled={!r.asistio}
+                          value={r.puntual === null ? '' : r.puntual ? 'si' : 'no'}
+                          onChange={(e) => updateRow(r.id, { puntual: e.target.value === '' ? null : e.target.value === 'si' })}
+                          className="rounded border-0 bg-slate-50 px-1 py-1 text-xs ring-1 ring-slate-200 focus:ring-brand-500 disabled:opacity-40"
+                        >
+                          <option value="">—</option>
+                          <option value="si">A la hora</option>
+                          <option value="no">Tarde</option>
+                        </select>
+                      </td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.jugo} onChange={(e) => updateRow(r.id, { jugo: e.target.checked })} /></td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.titular} onChange={(e) => updateRow(r.id, { titular: e.target.checked })} /></td>
                       <td className="px-2 py-1.5 text-center"><input type="number" min="0" className="w-14 rounded border-0 bg-slate-50 px-2 py-1 text-center ring-1 ring-slate-200 focus:ring-brand-500" value={r.goles} onChange={(e) => updateRow(r.id, { goles: Number(e.target.value) || 0 })} /></td>
@@ -428,8 +443,8 @@ export default function Partidos() {
               </table>
             </div>
             <p className="mt-2 text-xs text-slate-400">
-              La media se recalcula sola desde 60: ir al partido +1 · llegar a la hora +1 · gol +3 · asistencia +2 ·
-              punto de voto +1 · extra +1. El tope es 99.
+              La media se recalcula sola: ir al partido +1 · a la hora +1 · gol +3 · asistencia +2 · punto de voto +1.
+              Resta: anotarse y no ir −3 · llegar tarde −1 · cuota atrasada −2. Dejar la puntualidad en «—» no suma ni resta.
             </p>
 
             <div className="mt-4 flex justify-between">
