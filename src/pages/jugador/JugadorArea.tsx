@@ -180,8 +180,48 @@ function CabeceraPartido({ partido, etiqueta }: { partido: Partido; etiqueta: st
   )
 }
 
+/* ============ LO QUE LE DEBE AL EQUIPO ============ */
+function Sanciones({ jugadorId }: { jugadorId: string | null }) {
+  const [pendientes, setPendientes] = useState<{ sancion: string; rival: string }[]>([])
+
+  useEffect(() => {
+    if (!jugadorId) return
+    supabase
+      .from('partido_jugadores')
+      .select('sancion, sancion_cumplida, partidos(rival)')
+      .eq('jugador_id', jugadorId)
+      .not('sancion', 'is', null)
+      .eq('sancion_cumplida', false)
+      .then(({ data }) => {
+        // La relación viene como arreglo desde PostgREST
+        const filas = (data ?? []) as { sancion: string; partidos: { rival: string }[] | { rival: string } | null }[]
+        setPendientes(
+          filas.map((f) => ({
+            sancion: f.sancion,
+            rival: Array.isArray(f.partidos) ? (f.partidos[0]?.rival ?? '') : (f.partidos?.rival ?? ''),
+          })),
+        )
+      })
+  }, [jugadorId])
+
+  if (pendientes.length === 0) return null
+  return (
+    <div className="mb-5 rounded-2xl bg-amber-400/10 p-4 ring-1 ring-amber-400/30">
+      <p className="text-xs font-bold uppercase tracking-wide text-amber-300">Le debes al equipo</p>
+      <ul className="mt-2 space-y-1">
+        {pendientes.map((p, i) => (
+          <li key={i} className="text-sm text-white">
+            {p.sancion} <span className="text-slate-400">· partido con {p.rival}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 /* ============ PRÓXIMO PARTIDO: CONFIRMAR ASISTENCIA ============ */
 function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugadorId: string | null }) {
+  // Ojo: las sanciones se muestran aunque no haya partido citado.
   const [respuesta, setRespuesta] = useState<Respuesta | null>(null)
   const [conteo, setConteo] = useState({ si: 0, duda: 0, no: 0 })
   const [guardando, setGuardando] = useState(false)
@@ -221,7 +261,12 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
   }
 
   if (!partido) {
-    return <p className="py-10 text-center text-slate-400">No hay ningún partido citado por ahora.</p>
+    return (
+      <div>
+        <Sanciones jugadorId={jugadorId} />
+        <p className="py-10 text-center text-slate-400">No hay ningún partido citado por ahora.</p>
+      </div>
+    )
   }
   if (!jugadorId) {
     return (
@@ -236,6 +281,7 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
 
   return (
     <div>
+      <Sanciones jugadorId={jugadorId} />
       <CabeceraPartido partido={partido} etiqueta="Próximo partido" />
       <p className="mb-3 text-center text-sm text-slate-300">¿Vas a este partido?</p>
       <div className="grid grid-cols-3 gap-2">

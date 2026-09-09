@@ -7,6 +7,9 @@ import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Spinner }
 
 const FASES = ['Liga', 'Cuartos de final', 'Semifinal', 'Final', 'Amistoso']
 
+/* Las de siempre, para no escribirlas cada vez. Igual se puede poner otra. */
+const SANCIONES = ['Promo de pisco', 'Bebidas para el equipo', 'Hielo y vasos', 'Paga el arbitraje']
+
 /* El ciclo de una fecha, en orden. Cada paso habilita el siguiente. */
 const CICLO: { estado: EstadoPartido; corto: string; ayuda: string; avanzar: string | null }[] = [
   {
@@ -74,6 +77,8 @@ export default function Partidos() {
   const [votantes, setVotantes] = useState(0)
   const [trabajando, setTrabajando] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [sancionPara, setSancionPara] = useState('')
+  const [sancionTexto, setSancionTexto] = useState(SANCIONES[0])
 
   const load = async () => {
     setLoading(true)
@@ -227,6 +232,12 @@ export default function Partidos() {
     [rows],
   )
   const golesTotales = useMemo(() => rows.reduce((a, r) => a + (r.goles || 0), 0), [rows])
+  /* Los candidatos naturales a sanción: dijeron que iban y no aparecieron. */
+  const faltaronAvisando = useMemo(
+    () => rows.filter((r) => r.confirmado === 'si' && !r.asistio),
+    [rows],
+  )
+  const sancionados = useMemo(() => rows.filter((r) => r.sancion), [rows])
   const asistieron = useMemo(() => rows.filter((r) => r.asistio).length, [rows])
   const puntuales = useMemo(() => rows.filter((r) => r.asistio && r.puntual === true).length, [rows])
   const atrasados = useMemo(() => rows.filter((r) => r.asistio && r.puntual === false).length, [rows])
@@ -446,6 +457,86 @@ export default function Partidos() {
               La media se recalcula sola: ir al partido +1 · a la hora +1 · gol +3 · asistencia +2 · punto de voto +1.
               Resta: anotarse y no ir −3 · llegar tarde −1 · cuota atrasada −2. Dejar la puntualidad en «—» no suma ni resta.
             </p>
+
+            {/* ---- Sanciones ----
+                El descuento de puntos ya es automático; esto es lo que la
+                persona le debe al equipo, para que no se olvide. */}
+            <div className="mt-5 rounded-xl bg-amber-50/70 p-4 ring-1 ring-amber-100">
+              <p className="text-sm font-bold text-ink-900">Sanciones del partido</p>
+              <p className="mb-3 mt-0.5 text-xs text-slate-500">
+                Lo que queda debiendo al equipo. Los puntos ya se descuentan solos; esto es para cobrarlo.
+              </p>
+
+              {faltaronAvisando.length > 0 && (
+                <p className="mb-3 rounded-lg bg-white px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+                  Se anotaron y no llegaron:{' '}
+                  <b>{faltaronAvisando.map((r) => nombreCorto(r.jugador)).join(', ')}</b>
+                </p>
+              )}
+
+              <div className="flex flex-wrap items-end gap-2">
+                <Field label="Jugador">
+                  <Select className="w-48" value={sancionPara} onChange={(e) => setSancionPara(e.target.value)}>
+                    <option value="">— Elegir —</option>
+                    {rows.map((r) => (
+                      <option key={r.id} value={r.id}>{nombreCorto(r.jugador)}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Sanción">
+                  <Input
+                    className="w-56"
+                    list="ob-sanciones"
+                    value={sancionTexto}
+                    onChange={(e) => setSancionTexto(e.target.value)}
+                    placeholder="Ej. Promo de pisco"
+                  />
+                </Field>
+                <datalist id="ob-sanciones">
+                  {SANCIONES.map((x) => <option key={x} value={x} />)}
+                </datalist>
+                <Button
+                  disabled={!sancionPara || !sancionTexto.trim()}
+                  onClick={() => {
+                    updateRow(sancionPara, { sancion: sancionTexto.trim(), sancion_cumplida: false })
+                    setSancionPara('')
+                  }}
+                >
+                  Agregar
+                </Button>
+              </div>
+
+              {sancionados.length === 0 ? (
+                <p className="mt-3 text-xs text-slate-400">Sin sanciones en este partido.</p>
+              ) : (
+                <ul className="mt-3 space-y-1.5">
+                  {sancionados.map((r) => (
+                    <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-amber-100">
+                      <span className="font-semibold text-ink-900">{nombreCorto(r.jugador)}</span>
+                      <span className={r.sancion_cumplida ? 'text-slate-400 line-through' : 'text-slate-700'}>
+                        {r.sancion}
+                      </span>
+                      <label className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-brand-600"
+                          checked={r.sancion_cumplida}
+                          onChange={(e) => updateRow(r.id, { sancion_cumplida: e.target.checked })}
+                        />
+                        Cumplida
+                      </label>
+                      <button
+                        onClick={() => updateRow(r.id, { sancion: null, sancion_cumplida: false })}
+                        className="text-slate-400 hover:text-rose-600"
+                        title="Quitar la sanción"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <div className="mt-4 flex justify-between">
               <Button variant="ghost" onClick={() => eliminarPartido(detalle)}>Eliminar partido</Button>

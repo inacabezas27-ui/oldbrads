@@ -167,6 +167,9 @@ export type PartidoJugador = {
   asistio: boolean
   /** null = sin registrar · true = a la hora · false = llegó tarde. */
   puntual: boolean | null
+  /** Lo que le debe al equipo por faltar o llegar tarde (una promo, etc.). */
+  sancion: string | null
+  sancion_cumplida: boolean
   /** Lo responde el propio jugador durante la citación. */
   confirmado: 'si' | 'no' | 'duda' | null
   confirmado_at: string | null
