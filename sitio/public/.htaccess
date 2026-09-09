@@ -3,6 +3,12 @@
 # 1) Forzar HTTPS y dominio canónico sin www (www.oldbrads.cl → oldbrads.cl)
 <IfModule mod_rewrite.c>
   RewriteEngine On
+
+  # Let's Encrypt valida el dominio pidiendo un archivo por HTTP. Si esa ruta
+  # se redirige a HTTPS antes de que exista el certificado, la validación falla
+  # y el certificado no se emite nunca: hay que dejarla pasar sin tocar.
+  RewriteRule ^\.well-known/acme-challenge/ - [L]
+
   RewriteCond %{HTTPS} !=on [OR]
   RewriteCond %{HTTP_HOST} ^www\. [NC]
   RewriteCond %{HTTP_HOST} ^(?:www\.)?(.+)$ [NC]
