@@ -251,4 +251,11 @@ export type AjustesCarta = {
   /** Al DT lo miden los resultados del equipo, no las estadísticas personales. */
   pts_dt_victoria: number
   pts_dt_empate: number
+  /** Penalizaciones: se guardan en positivo y la fórmula las descuenta. */
+  pen_no_fue: number
+  pen_atraso: number
+  pen_cuota: number
+  dias_gracia_cuota: number
+  /** La media no baja de aquí por muchas penalizaciones que haya. */
+  piso: number
 }

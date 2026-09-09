@@ -66,15 +66,15 @@ function JugadorLogin() {
   )
 }
 
-type Desglose = { asistio: number; puntual: number; goles: number; asistencias: number; votos: number; extra: number }
+type Desglose = { asistio: number; puntual: number; goles: number; asistencias: number; votos: number; extra: number; noFue: number; atrasos: number }
 
 /* De dónde sale cada punto de la media. */
-function Fila({ label, cantidad, puntos }: { label: string; cantidad: number; puntos: number }) {
+function Fila({ label, cantidad, puntos, resta = false }: { label: string; cantidad: number; puntos: number; resta?: boolean }) {
   if (!cantidad) return null
   return (
     <div className="flex items-center justify-between py-1 text-sm">
       <span className="text-slate-400">{label} <span className="text-slate-500">× {cantidad}</span></span>
-      <span className="font-bold text-white">+{puntos}</span>
+      <span className={`font-bold ${resta ? 'text-rose-300' : 'text-white'}`}>{resta ? '−' : '+'}{puntos}</span>
     </div>
   )
 }
@@ -87,10 +87,10 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
   useEffect(() => {
     if (!jugador) return
     Promise.all([
-      supabase.from('partido_jugadores').select('asistio, puntual, goles, asistencias, puntos_voto, puntos_extra').eq('jugador_id', jugador.id),
+      supabase.from('partido_jugadores').select('asistio, puntual, goles, asistencias, puntos_voto, puntos_extra, confirmado').eq('jugador_id', jugador.id),
       supabase.from('ajustes_carta').select('*').eq('id', 1).maybeSingle(),
     ]).then(([{ data: pjs }, { data: aj }]) => {
-      const filas = (pjs ?? []) as { asistio: boolean; puntual: boolean; goles: number; asistencias: number; puntos_voto: number; puntos_extra: number }[]
+      const filas = (pjs ?? []) as { asistio: boolean; puntual: boolean; goles: number; asistencias: number; puntos_voto: number; puntos_extra: number; confirmado: string | null }[]
       setD({
         asistio: filas.filter((f) => f.asistio).length,
         puntual: filas.filter((f) => f.asistio && f.puntual).length,
@@ -98,6 +98,8 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
         asistencias: filas.reduce((a, f) => a + f.asistencias, 0),
         votos: filas.reduce((a, f) => a + f.puntos_voto, 0),
         extra: filas.reduce((a, f) => a + f.puntos_extra, 0),
+        noFue: filas.filter((f) => f.confirmado === 'si' && !f.asistio).length,
+        atrasos: filas.filter((f) => f.asistio && !f.puntual).length,
       })
       setAjustes((aj as AjustesCarta) ?? null)
     })
@@ -150,6 +152,8 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
           {!jugador.es_dt && <Fila label="Asistencias" cantidad={d.asistencias} puntos={d.asistencias * ajustes.pts_asistencia} />}
           {!jugador.es_dt && <Fila label="Votos de tus compañeros" cantidad={d.votos} puntos={d.votos * ajustes.pts_voto} />}
           <Fila label="Puntos extra" cantidad={d.extra} puntos={d.extra * ajustes.pts_extra} />
+          <Fila label="Dijiste que ibas y no fuiste" cantidad={d.noFue} puntos={d.noFue * ajustes.pen_no_fue} resta />
+          <Fila label="Llegaste tarde" cantidad={d.atrasos} puntos={d.atrasos * ajustes.pen_atraso} resta />
           {d.asistio + d.goles + d.asistencias + d.votos + d.extra === 0 && (
             <p className="py-2 text-sm text-slate-500">Todavía no hay partidos cargados. Tu media parte en {ajustes.base}.</p>
           )}

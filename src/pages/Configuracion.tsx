@@ -17,7 +17,14 @@ const CAMPOS: { k: keyof AjustesCarta; label: string; ayuda: string }[] = [
   { k: 'pts_extra', label: 'Punto extra', ayuda: 'Los que pone la directiva a mano.' },
   { k: 'pts_dt_victoria', label: 'DT: partido ganado', ayuda: 'Solo para el entrenador.' },
   { k: 'pts_dt_empate', label: 'DT: partido empatado', ayuda: 'Solo para el entrenador.' },
+  { k: 'pen_no_fue', label: 'Dijo que iba y no fue', ayuda: 'Se descuenta de la media.' },
+  { k: 'pen_atraso', label: 'Llegó tarde', ayuda: 'Además de no ganar el punto por puntualidad.' },
+  { k: 'pen_cuota', label: 'Cuota atrasada', ayuda: 'Por cada cuota vencida sin pagar.' },
+  { k: 'dias_gracia_cuota', label: 'Días de gracia', ayuda: 'La cuota pesa recién después de estos días.' },
+  { k: 'piso', label: 'Media mínima', ayuda: 'Por muchas penalizaciones, nadie baja de aquí.' },
 ]
+
+const ES_PENALIZACION = (k: string) => k.startsWith('pen_') || k === 'dias_gracia_cuota' || k === 'piso'
 
 /* ============ ECONOMÍA DE LA CARTA ============ */
 function AjustesDeCarta() {
@@ -73,7 +80,7 @@ function AjustesDeCarta() {
       </p>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {CAMPOS.filter((c) => !String(c.k).startsWith('pts_dt')).map((c) => (
+        {CAMPOS.filter((c) => !String(c.k).startsWith('pts_dt') && !ES_PENALIZACION(String(c.k))).map((c) => (
           <Field key={c.k} label={c.label}>
             <Input
               type="number"
@@ -93,6 +100,26 @@ function AjustesDeCarta() {
         </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {CAMPOS.filter((c) => String(c.k).startsWith('pts_dt')).map((c) => (
+            <Field key={c.k} label={c.label}>
+              <Input
+                type="number"
+                value={a[c.k] as number}
+                title={c.ayuda}
+                onChange={(e) => setA({ ...a, [c.k]: Number(e.target.value) || 0 })}
+              />
+            </Field>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-xl bg-rose-50/60 p-4 ring-1 ring-rose-100">
+        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-rose-700">Lo que resta</p>
+        <p className="mb-3 text-sm text-slate-600">
+          Se anotan en positivo y la fórmula los descuenta. Anotarse y no ir es lo que más pesa, porque deja al
+          equipo con menos gente de la que contaba.
+        </p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          {CAMPOS.filter((c) => ES_PENALIZACION(String(c.k))).map((c) => (
             <Field key={c.k} label={c.label}>
               <Input
                 type="number"
