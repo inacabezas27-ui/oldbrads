@@ -124,8 +124,8 @@ export default function Estadisticas() {
       return {
         jugador: j,
         convocado: rs.filter((r) => r.citado).length,
-        fue: rs.filter((r) => r.asistio).length,
-        puntual: rs.filter((r) => r.asistio && r.puntual).length,
+        fue: rs.filter((r) => r.asistio === true).length,
+        puntual: rs.filter((r) => r.asistio === true && r.puntual === true).length,
         jugo: rs.filter((r) => r.jugo).length,
         titular: rs.filter((r) => r.titular).length,
         goles: rs.reduce((a, r) => a + r.goles, 0),

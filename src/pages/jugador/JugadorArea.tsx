@@ -91,16 +91,16 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
       supabase.from('partido_jugadores').select('asistio, puntual, goles, asistencias, puntos_voto, puntos_extra, confirmado').eq('jugador_id', jugador.id),
       supabase.from('ajustes_carta').select('*').eq('id', 1).maybeSingle(),
     ]).then(([{ data: pjs }, { data: aj }]) => {
-      const filas = (pjs ?? []) as { asistio: boolean; puntual: boolean | null; goles: number; asistencias: number; puntos_voto: number; puntos_extra: number; confirmado: string | null }[]
+      const filas = (pjs ?? []) as { asistio: boolean | null; puntual: boolean | null; goles: number; asistencias: number; puntos_voto: number; puntos_extra: number; confirmado: string | null }[]
       setD({
-        asistio: filas.filter((f) => f.asistio).length,
-        puntual: filas.filter((f) => f.asistio && f.puntual === true).length,
+        asistio: filas.filter((f) => f.asistio === true).length,
+        puntual: filas.filter((f) => f.asistio === true && f.puntual === true).length,
         goles: filas.reduce((a, f) => a + f.goles, 0),
         asistencias: filas.reduce((a, f) => a + f.asistencias, 0),
         votos: filas.reduce((a, f) => a + f.puntos_voto, 0),
         extra: filas.reduce((a, f) => a + f.puntos_extra, 0),
-        noFue: filas.filter((f) => f.confirmado === 'si' && !f.asistio).length,
-        atrasos: filas.filter((f) => f.asistio && f.puntual === false).length,
+        noFue: filas.filter((f) => f.asistio === false).length,
+        atrasos: filas.filter((f) => f.asistio === true && f.puntual === false).length,
       })
       setAjustes((aj as AjustesCarta) ?? null)
     })
@@ -339,8 +339,8 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
         const { data: participacion } = await supabase
           .from('partido_jugadores').select('jugador_id, asistio, jugo')
           .eq('partido_id', partido.id)
-        const filas = (participacion ?? []) as { jugador_id: string; asistio: boolean; jugo: boolean }[]
-        setFui(filas.some((f) => f.jugador_id === jugadorId && f.asistio))
+        const filas = (participacion ?? []) as { jugador_id: string; asistio: boolean | null; jugo: boolean }[]
+        setFui(filas.some((f) => f.jugador_id === jugadorId && f.asistio === true))
         setIdsQueJugaron(new Set(filas.filter((f) => f.jugo).map((f) => f.jugador_id)))
 
         const { data: votos } = await supabase

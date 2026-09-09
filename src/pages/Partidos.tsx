@@ -38,20 +38,22 @@ const CICLO: { estado: EstadoPartido; corto: string; ayuda: string; avanzar: str
   },
 ]
 
-/* El desplegable de llegada guarda dos cosas a la vez: si fue y si fue puntual. */
+/* El desplegable de llegada guarda dos cosas a la vez: si fue y si fue puntual.
+   "Sin registrar" es un estado propio: mientras el partido no se juega, nadie
+   figura como que no llegó. */
 function llegadaDe(r: PartidoJugador): '' | 'si' | 'no' | 'nollego' {
-  if (!r.asistio) return r.citado || r.confirmado === 'si' ? 'nollego' : ''
+  if (r.asistio === false) return 'nollego'
+  if (r.asistio !== true) return ''
   if (r.puntual === true) return 'si'
   if (r.puntual === false) return 'no'
   return ''
 }
 
-function cambioDeLlegada(valor: string, r: PartidoJugador): Partial<PartidoJugador> {
+function cambioDeLlegada(valor: string): Partial<PartidoJugador> {
   if (valor === 'si') return { asistio: true, puntual: true }
   if (valor === 'no') return { asistio: true, puntual: false }
   if (valor === 'nollego') return { asistio: false, puntual: null, jugo: false, titular: false }
-  // "—": sin registrar. Si ya venía marcado que fue, se mantiene.
-  return r.asistio ? { puntual: null } : { asistio: false, puntual: null }
+  return { asistio: null, puntual: null }
 }
 
 function resultadoDe(p: Partido): 'ganado' | 'empatado' | 'perdido' | null {
@@ -252,15 +254,14 @@ export default function Partidos() {
   /* Candidatos naturales a sanción: estaban citados (o dijeron que iban) y no
      aparecieron, sin haber avisado que no venían. */
   const faltaronAvisando = useMemo(
-    () => rows.filter((r) => !r.asistio && r.confirmado !== 'no' && r.confirmado !== 'lesionado'
-                             && (r.citado || r.confirmado === 'si')),
+    () => rows.filter((r) => r.asistio === false && r.confirmado !== 'no' && r.confirmado !== 'lesionado'),
     [rows],
   )
   const sancionados = useMemo(() => rows.filter((r) => r.sancion), [rows])
-  const asistieron = useMemo(() => rows.filter((r) => r.asistio).length, [rows])
-  const puntuales = useMemo(() => rows.filter((r) => r.asistio && r.puntual === true).length, [rows])
-  const atrasados = useMemo(() => rows.filter((r) => r.asistio && r.puntual === false).length, [rows])
-  const noLlegaron = useMemo(() => rows.filter((r) => r.citado && !r.asistio).length, [rows])
+  const asistieron = useMemo(() => rows.filter((r) => r.asistio === true).length, [rows])
+  const puntuales = useMemo(() => rows.filter((r) => r.asistio === true && r.puntual === true).length, [rows])
+  const atrasados = useMemo(() => rows.filter((r) => r.asistio === true && r.puntual === false).length, [rows])
+  const noLlegaron = useMemo(() => rows.filter((r) => r.asistio === false).length, [rows])
 
   if (loading) return <Spinner />
 
@@ -413,7 +414,7 @@ export default function Partidos() {
               <span className="text-xs font-semibold text-slate-500">Marcar de una vez:</span>
               <Button variant="secondary" onClick={() => marcarTodos({ asistio: true })}>Fueron todos los citados</Button>
               <Button variant="secondary" onClick={() => marcarTodos({ asistio: true, puntual: true })}>…y todos a la hora</Button>
-              <Button variant="secondary" onClick={() => marcarTodos({ asistio: false, puntual: null }, false)}>Limpiar asistencia</Button>
+              <Button variant="secondary" onClick={() => marcarTodos({ asistio: null, puntual: null }, false)}>Limpiar asistencia</Button>
               <span className="ml-auto text-xs text-slate-500">
                 Fueron <b className="text-ink-900">{asistieron}</b> · a la hora <b className="text-ink-900">{puntuales}</b>
                 {atrasados > 0 && <> · tarde <b className="text-rose-600">{atrasados}</b></>}
@@ -440,7 +441,7 @@ export default function Partidos() {
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {rows.map((r) => (
-                    <tr key={r.id} className={r.citado || r.confirmado === 'si' ? '' : 'opacity-50'}>
+                    <tr key={r.id} className={r.citado || r.confirmado === 'si' || r.asistio === true ? '' : 'opacity-50'}>
                       <td className="whitespace-nowrap px-3 py-1.5 font-medium text-ink-900">{nombreCorto(r.jugador)}</td>
                       <td className="px-2 py-1.5 text-center">
                         {/* Editable: el jugador responde desde su celular, pero
@@ -458,14 +459,14 @@ export default function Partidos() {
                         </select>
                       </td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.citado} onChange={(e) => updateRow(r.id, { citado: e.target.checked })} /></td>
-                      <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={r.asistio} onChange={(e) => updateRow(r.id, { asistio: e.target.checked, puntual: e.target.checked ? r.puntual : null })} /></td>
+                      <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={r.asistio === true} onChange={(e) => updateRow(r.id, e.target.checked ? { asistio: true } : { asistio: null, puntual: null })} /></td>
                       <td className="px-2 py-1.5 text-center">
                         {/* Un solo control resuelve la llegada: elegir "No llegó"
                             también desmarca la asistencia, y elegir una hora la
                             marca. Así no hay que tocar dos casillas. */}
                         <select
                           value={llegadaDe(r)}
-                          onChange={(e) => updateRow(r.id, cambioDeLlegada(e.target.value, r))}
+                          onChange={(e) => updateRow(r.id, cambioDeLlegada(e.target.value))}
                           className={`rounded border-0 px-1 py-1 text-xs ring-1 focus:ring-brand-500 ${
                             llegadaDe(r) === 'nollego'
                               ? 'bg-rose-50 font-semibold text-rose-700 ring-rose-200'
