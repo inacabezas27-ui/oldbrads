@@ -1,0 +1,16 @@
+DEJA AQUÍ LAS IMÁGENES DEL CLUB
+================================
+
+Arrastra a esta carpeta (public/img/) los archivos, con estos nombres:
+
+- logo.png        →  el escudo oficial de Old Brads (el que me pasaste)
+- equipo.jpg      →  una foto grupal buena del equipo (para portada/cierre)
+- final.jpg       →  foto del festejo / "pasamos a la final" (opcional)
+
+Jugadores nuevos (opcional, para sus láminas):
+- federico.jpg, caio.jpg, iago.jpg, antonio.jpg
+
+Apenas estén acá, el sitio y la presentación los toman solos
+(el logo reemplaza automáticamente al escudo dibujado en vector).
+
+Formatos: png o jpg. No importa el tamaño exacto.

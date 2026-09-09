@@ -1,0 +1,41 @@
+# Dependencias y compilados
+node_modules
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Claves y configuración local — NUNCA subir
+.env
+.env.*
+!.env.local.example
+*.local
+*.bak
+_archivo/
+sitio/_archivo/
+
+# Documentos internos del club: estrategia, actas, datos personales.
+# Viven en el computador, no en el repositorio.
+datos/
+docs/
+PASOS_HOSTINGER.md
+
+# Paquetes generados
+*.zip
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Sistema y editores
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

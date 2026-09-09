@@ -1,0 +1,40 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "old-brads-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 7001,
+      "autoPort": false
+    },
+    {
+      "name": "old-brads-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "sitio",
+      "port": 7002,
+      "autoPort": false
+    },
+    {
+      "name": "old-brads-web-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "7012",
+        "--strictPort"
+      ],
+      "cwd": "sitio",
+      "port": 7012,
+      "autoPort": false
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Verde bosque Old Brads (institucional, real del escudo #005020) */
+  --color-brand-50: #e8f3ec;
+  --color-brand-100: #c6e2d0;
+  --color-brand-200: #8fc3a3;
+  --color-brand-300: #4fa274;
+  --color-brand-400: #2f9e63; /* verde legible sobre navy */
+  --color-brand-500: #0f7a41;
+  --color-brand-600: #005020; /* verde bosque real */
+  --color-brand-700: #00431b;
+  --color-brand-800: #003516;
+  --color-brand-900: #002912;
+  /* Navy Old Brads (real del escudo #0A1633) */
+  --color-ink-900: #0a1633; /* navy profundo */
+  --color-ink-800: #12213f;
+  --color-ink-700: #1c2740; /* navy elevado */
+  --color-ink-600: #26314d;
+  --color-navy-500: #2a3a5e;
+  --color-navy-600: #1c2740;
+  /* Acento bronce (real del escudo #C0782A) — la firma es navy + bronce */
+  --color-gold-400: #c0782a;
+  --color-gold-500: #a5661f;
+  /* Tipografías */
+  --font-display: 'Anton', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #f4f6fb;
+  color: #0b1020;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hide number input spinners */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Landing — animaciones intro */
+@keyframes ob-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ob-crest-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes ob-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+.ob-anim-crest { animation: ob-crest-in 1s cubic-bezier(.2,.7,.2,1) both; }
+.ob-anim-up { animation: ob-fade-up 0.9s ease-out both; }
+.ob-anim-up-2 { animation: ob-fade-up 0.9s ease-out 0.25s both; }
+.ob-anim-up-3 { animation: ob-fade-up 0.9s ease-out 0.5s both; }
+.ob-bounce { animation: ob-bounce 1.8s ease-in-out infinite; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  .ob-anim-crest, .ob-anim-up, .ob-anim-up-2, .ob-anim-up-3, .ob-bounce { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ================= Certificados =================
+   Se imprimen en A4 horizontal, uno por hoja. Al imprimir se oculta toda la
+   plataforma y queda solo la hoja del certificado. */
+@media print {
+  @page { size: A4 landscape; margin: 0; }
+  body { background: #fff; }
+  body > *:not(.ob-print) { display: none !important; }
+  .ob-print { display: block !important; }
+  .ob-cert { page-break-after: always; break-after: page; box-shadow: none !important; }
+  .ob-cert:last-child { page-break-after: auto; break-after: auto; }
+}
+.ob-print { display: none; }
+
+.ob-cert-firma { font-family: 'Great Vibes', cursive; }
+.ob-cert-nombre { font-family: 'Great Vibes', cursive; }
+.ob-cert-serif { font-family: 'Cormorant Garamond', Georgia, serif; }
