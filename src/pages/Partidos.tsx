@@ -38,6 +38,22 @@ const CICLO: { estado: EstadoPartido; corto: string; ayuda: string; avanzar: str
   },
 ]
 
+/* El desplegable de llegada guarda dos cosas a la vez: si fue y si fue puntual. */
+function llegadaDe(r: PartidoJugador): '' | 'si' | 'no' | 'nollego' {
+  if (!r.asistio) return r.citado || r.confirmado === 'si' ? 'nollego' : ''
+  if (r.puntual === true) return 'si'
+  if (r.puntual === false) return 'no'
+  return ''
+}
+
+function cambioDeLlegada(valor: string, r: PartidoJugador): Partial<PartidoJugador> {
+  if (valor === 'si') return { asistio: true, puntual: true }
+  if (valor === 'no') return { asistio: true, puntual: false }
+  if (valor === 'nollego') return { asistio: false, puntual: null, jugo: false, titular: false }
+  // "—": sin registrar. Si ya venía marcado que fue, se mantiene.
+  return r.asistio ? { puntual: null } : { asistio: false, puntual: null }
+}
+
 function resultadoDe(p: Partido): 'ganado' | 'empatado' | 'perdido' | null {
   if (p.goles_favor == null || p.goles_contra == null) return null
   if (p.goles_favor > p.goles_contra) return 'ganado'
@@ -413,7 +429,7 @@ export default function Partidos() {
                     <th className="px-2 py-2 text-center">Confirmó</th>
                     <th className="px-2 py-2 text-center">Citado</th>
                     <th className="px-2 py-2 text-center" title="Fue al partido, aunque no haya jugado">Fue</th>
-                    <th className="px-2 py-2 text-center" title="Llegó a la hora citada">A la hora</th>
+                    <th className="px-2 py-2 text-center" title="A la hora, tarde, o no llegó">Llegada</th>
                     <th className="px-2 py-2 text-center">Jugó</th>
                     <th className="px-2 py-2 text-center">Titular</th>
                     <th className="px-2 py-2 text-center">Goles</th>
@@ -444,24 +460,23 @@ export default function Partidos() {
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.citado} onChange={(e) => updateRow(r.id, { citado: e.target.checked })} /></td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={r.asistio} onChange={(e) => updateRow(r.id, { asistio: e.target.checked, puntual: e.target.checked ? r.puntual : null })} /></td>
                       <td className="px-2 py-1.5 text-center">
-                        {/* Si lo citaron y no llegó, no tiene sentido preguntar
-                            si fue puntual: se dice lo que pasó. */}
-                        {r.citado && !r.asistio ? (
-                          <span className="whitespace-nowrap rounded bg-rose-50 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700">
-                            No llegó
-                          </span>
-                        ) : (
+                        {/* Un solo control resuelve la llegada: elegir "No llegó"
+                            también desmarca la asistencia, y elegir una hora la
+                            marca. Así no hay que tocar dos casillas. */}
                         <select
-                          disabled={!r.asistio}
-                          value={r.puntual === null ? '' : r.puntual ? 'si' : 'no'}
-                          onChange={(e) => updateRow(r.id, { puntual: e.target.value === '' ? null : e.target.value === 'si' })}
-                          className="rounded border-0 bg-slate-50 px-1 py-1 text-xs ring-1 ring-slate-200 focus:ring-brand-500 disabled:opacity-40"
+                          value={llegadaDe(r)}
+                          onChange={(e) => updateRow(r.id, cambioDeLlegada(e.target.value, r))}
+                          className={`rounded border-0 px-1 py-1 text-xs ring-1 focus:ring-brand-500 ${
+                            llegadaDe(r) === 'nollego'
+                              ? 'bg-rose-50 font-semibold text-rose-700 ring-rose-200'
+                              : 'bg-slate-50 ring-slate-200'
+                          }`}
                         >
                           <option value="">—</option>
                           <option value="si">A la hora</option>
                           <option value="no">Tarde</option>
+                          <option value="nollego">No llegó</option>
                         </select>
-                        )}
                       </td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.jugo} onChange={(e) => updateRow(r.id, { jugo: e.target.checked })} /></td>
                       <td className="px-2 py-1.5 text-center"><input type="checkbox" className="h-4 w-4 accent-brand-600" checked={r.titular} onChange={(e) => updateRow(r.id, { titular: e.target.checked })} /></td>
