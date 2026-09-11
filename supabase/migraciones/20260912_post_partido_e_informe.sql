@@ -92,3 +92,36 @@ begin
 end $$;
 revoke execute on function public.guardar_informe(uuid, text) from public, anon;
 grant execute on function public.guardar_informe(uuid, text) to authenticated;
+
+-- ============================================================
+-- Añadido el mismo día: encuesta_post_partido_automatica
+--
+-- Cada partido nace con su encuesta lista, en borrador, y se abre sola el
+-- domingo junto con la votación. Antes había que acordarse de crearla a mano
+-- cada semana, y la semana que se olvide no hay nada que analizar el miércoles.
+-- Se sacó la pregunta de la jugada del partido: con el top 5 votado por todos
+-- ya está cubierto quién fue determinante.
+-- ============================================================
+create or replace function public.crear_encuesta_del_partido()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare eid uuid;
+begin
+  insert into public.encuestas (titulo, descripcion, tipo, estado, anonima, partido_id)
+  values (
+    'Encuesta post partido · ' || NEW.rival,
+    'Dos minutos para cerrar la fecha.',
+    'post_partido', 'borrador', true, NEW.id
+  )
+  returning id into eid;
+
+  insert into public.encuesta_preguntas (encuesta_id, orden, texto, tipo, opciones, obligatoria) values
+    (eid, 0, '¿Cómo estuvo el equipo hoy?', 'escala', '{}', true),
+    (eid, 1, '¿Algo que decir a la directiva? (cancha, horario, arbitraje, lo que sea)', 'texto', '{}', false);
+
+  return null;
+end $$;
+
+drop trigger if exists trg_encuesta_del_partido on public.partidos;
+create trigger trg_encuesta_del_partido
+  after insert on public.partidos
+  for each row execute function public.crear_encuesta_del_partido();

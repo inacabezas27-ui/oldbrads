@@ -398,6 +398,7 @@ function ProximoPartido({
 }) {
   // Ojo: las sanciones se muestran aunque no haya partido citado.
   const [respuesta, setRespuesta] = useState<Respuesta | null>(null)
+  const [cambiando, setCambiando] = useState(false)
   const [porJugador, setPorJugador] = useState<Record<string, Respuesta | null>>({})
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -443,6 +444,7 @@ function ProximoPartido({
       return
     }
     setRespuesta(valor)
+    setCambiando(false)
     onRespuesta?.(valor)
     cargar()
   }
@@ -467,36 +469,57 @@ function ProximoPartido({
   }
 
   const van = grupos[0].jugadores.length
+  const elegida = RESPUESTAS.find((r) => r.valor === respuesta)
 
   return (
     <div>
       <Sanciones jugadorId={jugadorId} />
       <CabeceraPartido partido={partido} etiqueta="Próximo partido" />
-      <p className="mb-1 text-center text-sm font-semibold text-white">Está citado todo el plantel.</p>
-      <p className="mb-3 text-center text-sm text-slate-300">¿Vas a este partido?</p>
-      <div className="grid grid-cols-2 gap-2">
-        {RESPUESTAS.map((r) => (
+      {respuesta && !cambiando ? (
+        /* Ya respondió: la decisión está tomada, no hay para qué dejar los
+           cuatro botones tentando. */
+        <div className="rounded-2xl p-4 text-center ring-1 ring-white/10" style={{ background: `${elegida?.color}33` }}>
+          <p className="text-xs uppercase tracking-widest text-slate-400">Tu respuesta</p>
+          <p className="mt-1 text-2xl font-black text-white">{elegida?.label}</p>
           <button
-            key={r.valor}
-            onClick={() => responder(r.valor)}
-            disabled={guardando}
-            className={`rounded-xl py-3 text-sm font-bold text-white transition disabled:opacity-50 ${
-              respuesta === r.valor ? 'ring-2 ring-white/70' : 'opacity-80 hover:opacity-100'
-            }`}
-            style={{ background: r.color }}
+            onClick={() => setCambiando(true)}
+            className="mt-3 rounded-lg bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
           >
-            {r.label}
+            Cambiar mi respuesta
           </button>
-        ))}
-      </div>
-      {respuesta ? (
-        <p className="mt-3 text-center text-xs text-slate-400">
-          Tu respuesta quedó guardada. Puedes cambiarla mientras la citación siga abierta.
-        </p>
+        </div>
       ) : (
-        <p className="mt-3 text-center text-xs" style={{ color: BRONCE }}>
-          Todavía no respondes. Con tu respuesta la directiva arma la nómina.
-        </p>
+        <>
+          <p className="mb-1 text-center text-sm font-semibold text-white">Está citado todo el plantel.</p>
+          <p className="mb-3 text-center text-sm text-slate-300">¿Vas a este partido?</p>
+          <div className="grid grid-cols-2 gap-2">
+            {RESPUESTAS.map((r) => (
+              <button
+                key={r.valor}
+                onClick={() => responder(r.valor)}
+                disabled={guardando}
+                className={`rounded-xl py-3 text-sm font-bold text-white transition disabled:opacity-50 ${
+                  respuesta === r.valor ? 'ring-2 ring-white/70' : 'opacity-80 hover:opacity-100'
+                }`}
+                style={{ background: r.color }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          {respuesta ? (
+            <button
+              onClick={() => setCambiando(false)}
+              className="mt-3 w-full text-center text-xs text-slate-400 hover:text-white"
+            >
+              Dejar mi respuesta como estaba
+            </button>
+          ) : (
+            <p className="mt-3 text-center text-xs" style={{ color: BRONCE }}>
+              Todavía no respondes. Con tu respuesta la directiva arma la nómina.
+            </p>
+          )}
+        </>
       )}
       {msg && <p className="mt-3 rounded-lg bg-white/10 px-3 py-2 text-center text-sm text-white">{msg}</p>}
 
@@ -834,7 +857,7 @@ export default function JugadorArea() {
     if (!session) return
     const contar = async () => {
       const [{ data: es }, { data: ps }] = await Promise.all([
-        supabase.from('encuestas').select('id').eq('estado', 'abierta'),
+        supabase.from('encuestas').select('id').eq('estado', 'abierta').is('partido_id', null),
         supabase.from('encuesta_participantes').select('encuesta_id'),
       ])
       const hechas = new Set(((ps ?? []) as { encuesta_id: string }[]).map((p) => p.encuesta_id))
