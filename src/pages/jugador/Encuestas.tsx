@@ -8,7 +8,82 @@ const BRONCE = '#c0782a'
 const inputCls =
   'w-full rounded-lg border border-white/15 bg-ink-800 px-3 py-2.5 text-white outline-none placeholder:text-slate-500 focus:border-white/40'
 
-type Valor = { jugador?: string; opcion?: string; texto?: string; numero?: string }
+export type Valor = { jugador?: string; opcion?: string; texto?: string; numero?: string }
+
+/* Una pregunta de encuesta, dibujada según su tipo. Vive acá y la usa también
+   el post partido, que mezcla la votación con estas mismas preguntas. */
+export function CampoPregunta({
+  q, indice, valor, onChange, plantel,
+}: {
+  q: EncuestaPregunta
+  indice: number
+  valor: Valor
+  onChange: (v: Valor) => void
+  plantel: Jugador[]
+}) {
+  const v = valor ?? {}
+  return (
+    <div>
+      <p className="mb-2 text-sm font-semibold text-white">
+        {indice}. {q.texto}
+        {!q.obligatoria && <span className="ml-1 text-xs font-normal text-slate-500">(opcional)</span>}
+      </p>
+
+      {q.tipo === 'jugador' && (
+        <select value={v.jugador ?? ''} onChange={(e) => onChange({ jugador: e.target.value })} className={inputCls}>
+          <option value="">— Elegir jugador —</option>
+          {plantel.map((j) => <option key={j.id} value={j.id}>{nombreCompleto(j)}</option>)}
+        </select>
+      )}
+
+      {q.tipo === 'opciones' && (
+        <div className="space-y-2">
+          {q.opciones.map((op) => (
+            <button
+              key={op}
+              type="button"
+              onClick={() => onChange({ opcion: op })}
+              className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition ${
+                v.opcion === op ? 'text-white ring-2 ring-white/60' : 'text-slate-300 ring-1 ring-white/15 hover:ring-white/30'
+              }`}
+              style={{ background: v.opcion === op ? BRONCE : 'rgba(255,255,255,0.04)' }}
+            >
+              {op}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {q.tipo === 'escala' && (
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onChange({ numero: String(n) })}
+              className={`flex-1 rounded-lg py-3 font-black transition ${
+                v.numero === String(n) ? 'text-white' : 'text-slate-400 ring-1 ring-white/15'
+              }`}
+              style={{ background: v.numero === String(n) ? BRONCE : 'rgba(255,255,255,0.04)' }}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {q.tipo === 'texto' && (
+        <textarea
+          value={v.texto ?? ''}
+          onChange={(e) => onChange({ texto: e.target.value })}
+          rows={3}
+          className={inputCls}
+          placeholder="Escribe tu respuesta…"
+        />
+      )}
+    </div>
+  )
+}
 
 /* ============ RESPONDER UNA ENCUESTA ============ */
 function Responder({
@@ -89,70 +164,16 @@ function Responder({
       </div>
 
       <div className="space-y-5">
-        {preguntas.map((q, i) => {
-          const v = valores[q.id] ?? {}
-          return (
-            <div key={q.id}>
-              <p className="mb-2 text-sm font-semibold text-white">
-                {i + 1}. {q.texto}
-                {!q.obligatoria && <span className="ml-1 text-xs font-normal text-slate-500">(opcional)</span>}
-              </p>
-
-              {q.tipo === 'jugador' && (
-                <select value={v.jugador ?? ''} onChange={(e) => set(q.id, { jugador: e.target.value })} className={inputCls}>
-                  <option value="">— Elegir jugador —</option>
-                  {plantel.map((j) => <option key={j.id} value={j.id}>{nombreCompleto(j)}</option>)}
-                </select>
-              )}
-
-              {q.tipo === 'opciones' && (
-                <div className="space-y-2">
-                  {q.opciones.map((op) => (
-                    <button
-                      key={op}
-                      type="button"
-                      onClick={() => set(q.id, { opcion: op })}
-                      className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition ${
-                        v.opcion === op ? 'text-white ring-2 ring-white/60' : 'text-slate-300 ring-1 ring-white/15 hover:ring-white/30'
-                      }`}
-                      style={{ background: v.opcion === op ? BRONCE : 'rgba(255,255,255,0.04)' }}
-                    >
-                      {op}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {q.tipo === 'escala' && (
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => set(q.id, { numero: String(n) })}
-                      className={`flex-1 rounded-lg py-3 font-black transition ${
-                        v.numero === String(n) ? 'text-white' : 'text-slate-400 ring-1 ring-white/15'
-                      }`}
-                      style={{ background: v.numero === String(n) ? BRONCE : 'rgba(255,255,255,0.04)' }}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {q.tipo === 'texto' && (
-                <textarea
-                  value={v.texto ?? ''}
-                  onChange={(e) => set(q.id, { texto: e.target.value })}
-                  rows={3}
-                  className={inputCls}
-                  placeholder="Escribe tu respuesta…"
-                />
-              )}
-            </div>
-          )
-        })}
+        {preguntas.map((q, i) => (
+          <CampoPregunta
+            key={q.id}
+            q={q}
+            indice={i + 1}
+            valor={valores[q.id] ?? {}}
+            onChange={(v) => set(q.id, v)}
+            plantel={plantel}
+          />
+        ))}
       </div>
 
       {error && <p className="mt-4 rounded-lg bg-rose-500/15 px-3 py-2 text-center text-sm text-rose-200">{error}</p>}
@@ -180,7 +201,7 @@ export default function EncuestasJugador({ plantel }: { plantel: Jugador[] }) {
 
   const cargar = async () => {
     const [{ data: es }, { data: ps }] = await Promise.all([
-      supabase.from('encuestas').select('*').eq('estado', 'abierta').order('created_at', { ascending: false }),
+      supabase.from('encuestas').select('*').eq('estado', 'abierta').is('partido_id', null).order('created_at', { ascending: false }),
       supabase.from('encuesta_participantes').select('encuesta_id'),
     ])
     setEncuestas((es as Encuesta[]) ?? [])

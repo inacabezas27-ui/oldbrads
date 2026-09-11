@@ -163,8 +163,13 @@ export type Partido = {
   estado: EstadoPartido
   /** Jueves 13:00 previo: último plazo para decir si vas. null = sin plazo. */
   cierre_confirmacion: string | null
-  /** Martes 21:00 posterior: la votación se cierra sola. null = sin plazo. */
+  /** Domingo 12:00 posterior: se abre la votación y la encuesta del partido. */
+  apertura_votacion: string | null
+  /** Martes 09:00 posterior: la votación se cierra sola. null = sin plazo. */
   cierre_votacion: string | null
+  /** Lo que la IA saca de los votos y la encuesta, para la reunión. */
+  informe: string | null
+  informe_generado_en: string | null
   mvp_jugador_id: string | null
   notas: string | null
   created_at: string
@@ -210,6 +215,8 @@ export type TipoPregunta = 'jugador' | 'opciones' | 'texto' | 'escala'
 
 export type Encuesta = {
   id: string
+  /** Si viene, es la encuesta de ese partido y se responde junto con el top 5. */
+  partido_id?: string | null
   titulo: string
   descripcion: string | null
   tipo: string

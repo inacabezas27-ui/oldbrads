@@ -3,12 +3,15 @@ import { Link, Navigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { nivelDe, siguienteNivel, usuarioAEmail } from '../../lib/jugadorAuth'
-import { nombreCorto, nombreCompleto, type AjustesCarta, type Jugador, type Partido } from '../../lib/types'
+import {
+  nombreCorto, nombreCompleto,
+  type AjustesCarta, type Encuesta, type EncuestaPregunta, type Jugador, type Partido,
+} from '../../lib/types'
 import { fecha as fmtFecha } from '../../lib/format'
 import Crest from '../../components/Crest'
 import FifaCard from '../../components/FifaCard'
 import MisDatos from './MisDatos'
-import EncuestasJugador from './Encuestas'
+import EncuestasJugador, { CampoPregunta, type Valor } from './Encuestas'
 
 const BRONCE = '#c0782a'
 
@@ -516,90 +519,149 @@ function ProximoPartido({
   )
 }
 
-/* ============ VOTAR ============ */
-function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Partido | null; userId: string; jugadorId: string | null; plantelCompleto: Jugador[] }) {
-  const [picks, setPicks] = useState<string[]>(['', '', '', '', ''])
+/* ============ EL POST PARTIDO ============ */
+/* Una sola cosa: primero el top 5, que es lo que mueve las cartas, y después
+   las preguntas del partido. Antes eran dos pantallas separadas y la gente
+   votaba o contestaba, pero rara vez las dos. */
+function PostPartido({
+  partido,
+  userId,
+  jugadorId,
+  plantelCompleto,
+}: {
+  partido: Partido | null
+  userId: string
+  jugadorId: string | null
+  plantelCompleto: Jugador[]
+}) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
   // Solo vota quien fue al partido, y solo por quienes jugaron: así el voto
   // sale de lo que la persona vio en la cancha.
   const [fui, setFui] = useState(false)
   const [idsQueJugaron, setIdsQueJugaron] = useState<Set<string>>(new Set())
-  // Votar es una decisión, no un formulario que queda abierto para siempre.
-  // Una vez votado se muestra lo elegido, y se vuelve a abrir solo si la
-  // persona dice que quiere cambiarlo.
+  const [picks, setPicks] = useState<string[]>(['', '', '', '', ''])
   const [yaVoto, setYaVoto] = useState(false)
   const [editando, setEditando] = useState(false)
+
+  const [encuesta, setEncuesta] = useState<Encuesta | null>(null)
+  const [preguntas, setPreguntas] = useState<EncuestaPregunta[]>([])
+  const [yaRespondio, setYaRespondio] = useState(false)
+  const [valores, setValores] = useState<Record<string, Valor>>({})
 
   const plantel = plantelCompleto.filter(
     (j) => j.id !== jugadorId && !j.es_dt && idsQueJugaron.has(j.id),
   )
 
   useEffect(() => {
-    const load = async () => {
+    const cargar = async () => {
       setLoading(true)
-      if (partido) {
-        const { data: participacion } = await supabase
-          .from('partido_jugadores').select('jugador_id, asistio, jugo')
-          .eq('partido_id', partido.id)
-        const filas = (participacion ?? []) as { jugador_id: string; asistio: boolean | null; jugo: boolean }[]
-        setFui(filas.some((f) => f.jugador_id === jugadorId && f.asistio === true))
-        setIdsQueJugaron(new Set(filas.filter((f) => f.jugo).map((f) => f.jugador_id)))
+      if (!partido) { setLoading(false); return }
 
-        const { data: votos } = await supabase
-          .from('votos').select('votado_jugador_id, posicion')
-          .eq('partido_id', partido.id).eq('votante_user_id', userId).order('posicion')
-        const next = ['', '', '', '', '']
-        ;((votos ?? []) as { votado_jugador_id: string; posicion: number }[]).forEach((v) => {
-          next[v.posicion - 1] = v.votado_jugador_id
-        })
-        setPicks(next)
-        const votado = next.every(Boolean)
-        setYaVoto(votado)
-        setEditando(!votado)
+      const [{ data: participacion }, { data: votos }, { data: enc }] = await Promise.all([
+        supabase.from('partido_jugadores').select('jugador_id, asistio, jugo').eq('partido_id', partido.id),
+        supabase.from('votos').select('votado_jugador_id, posicion')
+          .eq('partido_id', partido.id).eq('votante_user_id', userId).order('posicion'),
+        supabase.from('encuestas').select('*').eq('partido_id', partido.id).eq('estado', 'abierta').maybeSingle(),
+      ])
+
+      const filas = (participacion ?? []) as { jugador_id: string; asistio: boolean | null; jugo: boolean }[]
+      setFui(filas.some((f) => f.jugador_id === jugadorId && f.asistio === true))
+      setIdsQueJugaron(new Set(filas.filter((f) => f.jugo).map((f) => f.jugador_id)))
+
+      const next = ['', '', '', '', '']
+      ;((votos ?? []) as { votado_jugador_id: string; posicion: number }[]).forEach((v) => {
+        next[v.posicion - 1] = v.votado_jugador_id
+      })
+      setPicks(next)
+      const votado = next.every(Boolean)
+      setYaVoto(votado)
+      setEditando(!votado)
+
+      const e = (enc as Encuesta) ?? null
+      setEncuesta(e)
+      if (e) {
+        const [{ data: qs }, { data: mia }] = await Promise.all([
+          supabase.from('encuesta_preguntas').select('*').eq('encuesta_id', e.id).order('orden'),
+          supabase.from('encuesta_participantes').select('encuesta_id').eq('encuesta_id', e.id).maybeSingle(),
+        ])
+        setPreguntas((qs as EncuestaPregunta[]) ?? [])
+        setYaRespondio(Boolean(mia))
       }
       setLoading(false)
     }
-    load()
+    cargar()
   }, [partido, userId, jugadorId])
 
   const setPick = (idx: number, val: string) => {
     setPicks((p) => p.map((x, i) => (i === idx ? val : x)))
-    setMsg(null)
+    setError(null)
   }
-
   const opcionesPara = (idx: number) =>
     plantel.filter((j) => !picks.some((p, i) => i !== idx && p === j.id))
 
   const completos = picks.every((p) => p) && new Set(picks).size === 5
+  const preguntasPendientes = encuesta && !yaRespondio ? preguntas : []
+  const faltanPreguntas = preguntasPendientes.filter((q) => {
+    if (!q.obligatoria) return false
+    const v = valores[q.id] ?? {}
+    return !(v.jugador || v.opcion || v.texto?.trim() || v.numero)
+  })
 
-  const guardar = async () => {
+  const enviar = async () => {
     if (!partido || !completos) return
-    setSaving(true)
-    setMsg(null)
-    await supabase.from('votos').delete().eq('partido_id', partido.id).eq('votante_user_id', userId)
-    const rows = picks.map((jid, i) => ({ partido_id: partido.id, votado_jugador_id: jid, posicion: i + 1 }))
-    const { error } = await supabase.from('votos').insert(rows)
-    setSaving(false)
-    if (error) {
-      setMsg('No se pudo guardar: ' + error.message)
+    if (faltanPreguntas.length) {
+      setError(`Te faltan ${faltanPreguntas.length} respuesta${faltanPreguntas.length === 1 ? '' : 's'} del partido.`)
       return
     }
-    setMsg('¡Voto guardado! Gracias por votar. 💚')
+    setSaving(true)
+    setError(null)
+    setMsg(null)
+
+    await supabase.from('votos').delete().eq('partido_id', partido.id).eq('votante_user_id', userId)
+    const { error: errVoto } = await supabase.from('votos').insert(
+      picks.map((jid, i) => ({ partido_id: partido.id, votado_jugador_id: jid, posicion: i + 1 })),
+    )
+    if (errVoto) {
+      setSaving(false)
+      setError('No se pudo guardar tu voto: ' + errVoto.message)
+      return
+    }
+
+    if (encuesta && !yaRespondio) {
+      const payload = preguntas
+        .map((q) => ({ pregunta_id: q.id, ...(valores[q.id] ?? {}) }))
+        .filter((r) => r.jugador || r.opcion || r.texto || r.numero)
+      const { error: errEnc } = await supabase.rpc('responder_encuesta', {
+        p_encuesta: encuesta.id,
+        p_respuestas: payload,
+      })
+      if (errEnc) {
+        setSaving(false)
+        setError('Tu voto quedó guardado, pero la encuesta no: ' + errEnc.message)
+        return
+      }
+      setYaRespondio(true)
+    }
+
+    setSaving(false)
     setYaVoto(true)
     setEditando(false)
+    setMsg('Listo. Gracias por cerrar la fecha. 💚')
   }
 
   if (loading) return <p className="text-center text-slate-400">Cargando…</p>
   if (!partido) {
     return (
       <p className="py-10 text-center text-slate-400">
-        No hay ninguna votación abierta. Cuando termine el próximo partido, la directiva la abre y podrás votar acá.
+        No hay ninguna votación abierta. Se abre sola el domingo al mediodía, después del partido.
       </p>
     )
   }
-  if (!fui) {
+  if (!jugadorId || !fui) {
     return (
       <div>
         <CabeceraPartido partido={partido} etiqueta="Votación abierta" />
@@ -612,6 +674,7 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
       </div>
     )
   }
+
   const nombreDe = (id: string) => {
     const j = plantelCompleto.find((x) => x.id === id)
     return j ? nombreCompleto(j) : '—'
@@ -632,6 +695,11 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
               </div>
             ))}
           </div>
+          {yaRespondio && (
+            <p className="mt-3 border-t border-white/10 pt-3 text-center text-xs text-slate-400">
+              Y ya respondiste la encuesta del partido.
+            </p>
+          )}
         </div>
         {msg && <p className="mt-4 rounded-lg bg-white/10 px-3 py-2 text-center text-sm font-medium text-white">{msg}</p>}
         <Plazo
@@ -662,13 +730,12 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
 
   return (
     <div>
-      <CabeceraPartido partido={partido} etiqueta="Vota el partido" />
-      <p className="mb-1 text-center text-sm text-slate-300">
-        Elige a los <b>5 mejores</b>, del 1° al 5°. Solo aparecen los que jugaron.
-      </p>
-      <p className="mb-3 text-center text-xs text-slate-500">
-        Se suman todos los votos del equipo y solo el podio de ese total suma carta: 1° +3, 2° +2, 3° a 5° +1.
-        El 1° es el MVP del partido.
+      <CabeceraPartido partido={partido} etiqueta="Cierra la fecha" />
+
+      <p className="mb-2 text-sm font-semibold text-white">1. Los 5 mejores del partido</p>
+      <p className="mb-3 text-xs text-slate-500">
+        Del 1° al 5°, solo entre los que jugaron. Se suman los votos de todo el equipo y solo el podio de ese
+        total suma carta: 1° +3, 2° +2, 3° a 5° +1. El 1° queda de MVP.
       </p>
       <div className="space-y-3">
         {picks.map((val, idx) => (
@@ -684,16 +751,39 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
           </div>
         ))}
       </div>
+
+      {preguntasPendientes.length > 0 && (
+        <div className="mt-7 space-y-5 border-t border-white/10 pt-6">
+          {preguntasPendientes.map((q, i) => (
+            <CampoPregunta
+              key={q.id}
+              q={q}
+              indice={i + 2}
+              valor={valores[q.id] ?? {}}
+              onChange={(v) => { setValores((prev) => ({ ...prev, [q.id]: { ...prev[q.id], ...v } })); setError(null) }}
+              plantel={plantelCompleto.filter((j) => !j.es_dt)}
+            />
+          ))}
+        </div>
+      )}
+
       <Plazo
         hasta={partido.cierre_votacion}
-        texto="La votación se cierra sola el"
+        texto="Tienes plazo hasta el"
         vencido="La votación ya se cerró."
       />
-      {msg && <p className="mt-4 rounded-lg bg-white/10 px-3 py-2 text-center text-sm font-medium text-white">{msg}</p>}
-      <button onClick={guardar} disabled={!completos || saving}
+      {error && <p className="mt-3 rounded-lg bg-rose-500/15 px-3 py-2 text-center text-sm text-rose-200">{error}</p>}
+      {msg && <p className="mt-3 rounded-lg bg-white/10 px-3 py-2 text-center text-sm font-medium text-white">{msg}</p>}
+
+      <button onClick={enviar} disabled={!completos || saving}
         className="mt-5 w-full rounded-xl px-4 py-3 font-bold text-white disabled:opacity-50" style={{ background: completos ? BRONCE : '#555' }}>
-        {saving ? 'Guardando…' : completos ? 'Guardar mi voto' : 'Elige los 5 jugadores'}
+        {saving ? 'Enviando…' : completos ? 'Enviar' : 'Elige los 5 jugadores'}
       </button>
+      {preguntasPendientes.length > 0 && (
+        <p className="mt-2 text-center text-xs text-slate-500">
+          Las preguntas se responden una sola vez; el top 5 lo puedes cambiar hasta que cierre.
+        </p>
+      )}
       {yaVoto && (
         <button
           onClick={() => { setEditando(false); setMsg(null) }}
@@ -908,7 +998,7 @@ export default function JugadorArea() {
         )}
         {tab === 'votaciones' && (
           <div className="space-y-8">
-            <Votar partido={enVotacion} userId={user!.id} jugadorId={jugadorId} plantelCompleto={plantel} />
+            <PostPartido partido={enVotacion} userId={user!.id} jugadorId={jugadorId} plantelCompleto={plantel} />
             <div className="border-t border-white/10 pt-6">
               <p className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: BRONCE }}>Encuestas del club</p>
               <EncuestasJugador plantel={plantel.filter((j) => !j.es_dt)} />
