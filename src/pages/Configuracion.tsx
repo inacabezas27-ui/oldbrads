@@ -103,7 +103,8 @@ function AjustesDeCarta() {
     <Card className="p-6">
       <h2 className="text-lg font-black text-ink-900">Cómo sube la carta</h2>
       <p className="mb-5 mt-1 text-sm text-slate-500">
-        Cambia un número y todas las medias del plantel se recalculan al guardar.
+        Cambia un número y todas las medias del plantel se recalculan al guardar. Se admiten decimales: la fecha
+        cumplida entera —ir, llegar a la hora, decir si vas y votar— suma un punto entre las cuatro cosas.
       </p>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -111,6 +112,7 @@ function AjustesDeCarta() {
           <Field key={c.k} label={c.label}>
             <Input
               type="number"
+              step="0.05"
               value={a[c.k] as number}
               title={c.ayuda}
               onChange={(e) => setA({ ...a, [c.k]: Number(e.target.value) || 0 })}
@@ -130,6 +132,7 @@ function AjustesDeCarta() {
             <Field key={c.k} label={c.label}>
               <Input
                 type="number"
+                step="0.05"
                 value={a[c.k] as number}
                 title={c.ayuda}
                 onChange={(e) => setA({ ...a, [c.k]: Number(e.target.value) || 0 })}
@@ -150,6 +153,7 @@ function AjustesDeCarta() {
             <Field key={c.k} label={c.label}>
               <Input
                 type="number"
+                step="0.05"
                 value={a[c.k] as number}
                 title={c.ayuda}
                 onChange={(e) => setA({ ...a, [c.k]: Number(e.target.value) || 0 })}

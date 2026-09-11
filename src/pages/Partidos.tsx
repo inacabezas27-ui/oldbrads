@@ -578,14 +578,15 @@ export default function Partidos() {
               </table>
             </div>
             <p className="mt-2 text-xs text-slate-400">
-              La media se recalcula sola. Suma: ir +1 · a la hora +1 · titular +1 · ir igual sin poder jugar +1 ·
-              decir a tiempo si iba +1 · votar +1 · arco en cero +1 (+2 más al arquero) · gol +2 · asistencia +2 ·
-              podio de la votación +3/+2/+1. El DT suma +3 por partido ganado y +1 por empatado, siempre que haya
-              ido. Fuera del partido: cada encuesta respondida +1 y estar al día con las cuotas +2. Lo único
-              que resta es estar citado y no llegar, −3. Gol y asistencia valen lo mismo a propósito, y el arco en
-              cero lo ganan todos los que jugaron. Quien avisa que no va, o está lesionado, no pierde nada; dejar
-              la puntualidad en «—» no suma ni resta. Los números se cambian en{' '}
-              <Link to="/configuracion" className="underline">Configuración</Link>.
+              La media se recalcula sola. La fecha cumplida suma <b>1 punto</b> repartido entre cuatro cosas: ir
+              +0,4 · a la hora +0,2 · decir a tiempo si iba +0,2 · votar +0,2. El fútbol pesa más: titular +0,75 ·
+              ir igual sin poder jugar +0,5 · arco en cero +0,5 (+1 más al arquero) · gol +1,5 · asistencia +1,5 ·
+              podio de la votación +2 / +1,5 / +1. El DT suma +1,5 por partido ganado y +0,5 por empatado, siempre
+              que haya ido. Fuera del partido: cada encuesta del club +0,5 y estar al día con las cuotas +1. Lo
+              único que resta es estar citado y no llegar, −2, que son dos fechas cumplidas. Gol y asistencia
+              valen lo mismo a propósito, y el arco en cero lo ganan todos los que jugaron. Quien avisa que no va,
+              o está lesionado, no pierde nada; dejar la puntualidad en «—» no suma ni resta. Los números se
+              cambian en <Link to="/configuracion" className="underline">Configuración</Link>.
             </p>
 
             {(sinResponder.length > 0 || sinVotar.length > 0) && (

@@ -30,3 +30,9 @@ export const hoyISO = () => new Date().toISOString().slice(0, 10)
 export const periodoActual = () => new Date().toISOString().slice(0, 7)
 
 export { MESES }
+
+/** Puntos de carta: "1,5" · "0,4" · "12". Sin decimales cuando es redondo. */
+export const puntos = (n: number) => {
+  const v = Math.round(Number(n) * 100) / 100
+  return (Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0$/, '')).replace('.', ',')
+}

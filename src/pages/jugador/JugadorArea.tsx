@@ -7,7 +7,7 @@ import {
   nombreCorto, nombreCompleto,
   type AjustesCarta, type Encuesta, type EncuestaPregunta, type Jugador, type Partido,
 } from '../../lib/types'
-import { fecha as fmtFecha } from '../../lib/format'
+import { fecha as fmtFecha, puntos as fmtPts } from '../../lib/format'
 import Crest from '../../components/Crest'
 import FifaCard from '../../components/FifaCard'
 import MisDatos from './MisDatos'
@@ -84,7 +84,7 @@ function Fila({ label, cantidad, puntos, resta = false }: { label: string; canti
   return (
     <div className="flex items-center justify-between py-1 text-sm">
       <span className="text-slate-400">{label} <span className="text-slate-500">× {cantidad}</span></span>
-      <span className={`font-bold ${resta ? 'text-rose-300' : 'text-white'}`}>{resta ? '−' : '+'}{puntos}</span>
+      <span className={`font-bold ${resta ? 'text-rose-300' : 'text-white'}`}>{resta ? '−' : '+'}{fmtPts(puntos)}</span>
     </div>
   )
 }
@@ -130,7 +130,7 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
     items.filter(([, v]) => v > 0).map(([k, v]) => (
       <div key={k} className="flex justify-between py-0.5 text-sm">
         <span className="text-slate-400">{k}</span>
-        <span className={`font-bold ${signo === '+' ? 'text-white' : 'text-rose-300'}`}>{signo}{v}</span>
+        <span className={`font-bold ${signo === '+' ? 'text-white' : 'text-rose-300'}`}>{signo}{fmtPts(v)}</span>
       </div>
     ))
   const hayResta = resta.some(([, v]) => v > 0)
@@ -288,7 +288,7 @@ function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string 
       <p className="mt-4 max-w-xs text-center text-xs text-slate-500">
         {jugador.es_dt
           ? `Como DT tu media sube por ir al partido, llegar a la hora, cumplir con el equipo y por cada partido que gana el equipo estando tú en la cancha. El máximo es ${ajustes?.tope ?? 99}.`
-          : `Casi todo suma y casi nada resta: la carta sube haciendo las cosas. El máximo es ${ajustes?.tope ?? 99}.`}
+          : `Ir, llegar a la hora, decir si vas y votar suman un punto entre las cuatro. Un gol vale una fecha y media de eso: la carta sube jugando. El máximo es ${ajustes?.tope ?? 99}.`}
       </p>
     </div>
   )

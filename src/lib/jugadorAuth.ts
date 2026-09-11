@@ -14,11 +14,10 @@ export const usuarioAEmail = (usuario: string) => {
 export const claveInicial = (usuario: string) => `${usuario.toLowerCase().trim()}2026`
 
 /* ---- Niveles de la carta ----
-   La temporada son 12 fechas y todos parten en bronce (22). Casi todos los
-   puntos se ganan durante la temporada, así que la carta se mueve todas las
-   semanas: esa es la gracia. Yendo a todas, cumpliendo con el equipo y siendo
-   titular se llega a oro; leyenda pide además aportar en la cancha y que los
-   compañeros te voten. */
+   Todos parten en 60, como una carta de verdad, y el tope es 99. La fecha
+   cumplida entera vale un punto, así que la escalera se sube jugando: yendo a
+   todas y cumpliendo se llega a plata, siendo además titular a oro, y leyenda
+   pide goles, asistencias y que los compañeros te voten. */
 export type Nivel = { nombre: string; desde: number; bg: string; text: string; sil: string }
 
 export const NIVELES: Nivel[] = [
@@ -31,14 +30,14 @@ export const NIVELES: Nivel[] = [
   },
   {
     nombre: 'Plata',
-    desde: 60,
+    desde: 71,
     bg: 'linear-gradient(160deg,#f2f4f7 0%,#cfd6e2 45%,#9aa6b8 100%)',
     text: '#26303f',
     sil: 'rgba(38,48,63,0.20)',
   },
   {
     nombre: 'Oro',
-    desde: 80,
+    desde: 83,
     bg: 'linear-gradient(160deg,#faecb4 0%,#ecce78 42%,#d3ab44 100%)',
     text: '#3a2e0a',
     sil: 'rgba(58,46,10,0.22)',
