@@ -12,8 +12,8 @@ import Crest from '../../components/Crest'
 import FifaCard from '../../components/FifaCard'
 import MisDatos from './MisDatos'
 import EncuestasJugador, { CampoPregunta, type Valor } from './Encuestas'
+import { BRONCE } from '../../lib/marca'
 
-const BRONCE = '#c0782a'
 
 type Respuesta = 'si' | 'no' | 'duda' | 'lesionado'
 const RESPUESTAS: { valor: Respuesta; label: string; color: string }[] = [

@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase'
 import type { Temporada, Partido } from '../lib/types'
 import { fecha as fmtFecha } from '../lib/format'
 import Crest from '../components/Crest'
+import { BRONCE } from '../lib/marca'
 
 const IG = 'https://www.instagram.com/old_brads/'
-const BRONCE = '#c0782a'
 
 const IG_POSTS = [
   { src: '/img/ig/1-playoffs.jpg', cap: 'Clasificamos a Playoffs' },

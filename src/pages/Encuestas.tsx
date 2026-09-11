@@ -181,11 +181,20 @@ export default function Encuestas() {
               {e.estado === 'abierta' && <Badge tone="green">Abierta</Badge>}
               {e.estado === 'cerrada' && <Badge tone="amber">Cerrada</Badge>}
 
-              {e.estado === 'borrador' && <Button onClick={() => cambiarEstado(e, 'abierta')}>Publicar</Button>}
-              {e.estado === 'abierta' && <Button variant="secondary" onClick={() => cambiarEstado(e, 'cerrada')}>Cerrar</Button>}
-              {e.estado === 'cerrada' && <Button variant="secondary" onClick={() => cambiarEstado(e, 'abierta')}>Reabrir</Button>}
+              {/* La encuesta de un partido la abre y la cierra el calendario,
+                  junto con la votación. Abrirla a mano acá la descoordinaría
+                  del post partido, así que esos botones no van. */}
+              {e.partido_id ? (
+                <span className="text-xs text-slate-400">Se abre y cierra sola con el partido</span>
+              ) : (
+                <>
+                  {e.estado === 'borrador' && <Button onClick={() => cambiarEstado(e, 'abierta')}>Publicar</Button>}
+                  {e.estado === 'abierta' && <Button variant="secondary" onClick={() => cambiarEstado(e, 'cerrada')}>Cerrar</Button>}
+                  {e.estado === 'cerrada' && <Button variant="secondary" onClick={() => cambiarEstado(e, 'abierta')}>Reabrir</Button>}
+                </>
+              )}
               <Button variant="secondary" onClick={() => verResultados(e)}>Resultados</Button>
-              <Button variant="ghost" onClick={() => eliminar(e)}>Eliminar</Button>
+              {!e.partido_id && <Button variant="ghost" onClick={() => eliminar(e)}>Eliminar</Button>}
             </Card>
           ))}
         </div>

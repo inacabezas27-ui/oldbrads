@@ -13,8 +13,6 @@ export const usuarioAEmail = (usuario: string) => {
 /** Clave que entrega el club la primera vez. Después cada uno la cambia. */
 export const claveInicial = (usuario: string) => `${usuario.toLowerCase().trim()}2026`
 
-export const PUNTOS_POR_PUESTO = [5, 4, 3, 2, 1] // 1°=5 ... 5°=1
-
 /* ---- Niveles de la carta ----
    La temporada son 12 fechas y todos parten en bronce (22). Casi todos los
    puntos se ganan durante la temporada, así que la carta se mueve todas las

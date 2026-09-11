@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { nombreCompleto, type Encuesta, type EncuestaPregunta, type Jugador } from '../../lib/types'
 import { fecha as fmtFecha } from '../../lib/format'
+import { BRONCE } from '../../lib/marca'
 
-const BRONCE = '#c0782a'
 
 const inputCls =
   'w-full rounded-lg border border-white/15 bg-ink-800 px-3 py-2.5 text-white outline-none placeholder:text-slate-500 focus:border-white/40'

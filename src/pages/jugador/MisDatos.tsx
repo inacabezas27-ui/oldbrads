@@ -3,8 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { usuarioAEmail } from '../../lib/jugadorAuth'
 import { POSICIONES, TALLAS, type MisDatosFicha } from '../../lib/types'
+import { BRONCE } from '../../lib/marca'
 
-const BRONCE = '#c0782a'
 
 const inputCls =
   'w-full rounded-lg border border-white/15 bg-ink-800 px-3 py-2.5 text-white outline-none placeholder:text-slate-500 focus:border-white/40'

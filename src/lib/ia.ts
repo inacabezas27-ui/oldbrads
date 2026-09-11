@@ -1,12 +1,7 @@
 import { supabase } from './supabase'
 
 /** Tareas que el servidor sabe hacer. Las instrucciones viven allá, no acá. */
-export type TareaIA =
-  | 'certificado'
-  | 'informe_partido'
-  | 'caption_resultado'
-  | 'caption_citacion'
-  | 'presentacion_jugador'
+export type TareaIA = 'certificado' | 'informe_partido'
 
 /**
  * Le pide un texto al servidor, que es el único que habla con Gemini.

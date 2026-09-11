@@ -3,8 +3,8 @@ import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { Field, Input, Spinner } from '../components/ui'
 import Crest from '../components/Crest'
+import { BRONCE } from '../lib/marca'
 
-const BRONCE = '#c0782a'
 
 /**
  * Ya hay alguien conectado en este navegador.

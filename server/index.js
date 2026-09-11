@@ -77,24 +77,6 @@ const TAREAS = {
       `Una sola frase de entre 12 y 25 palabras, en tercera persona, que explique por qué se lo ganó. ` +
       `Sin comillas, sin "Por la presente", sin punto final si queda raro. Devuelve solo la frase.`,
   },
-  caption_resultado: {
-    descripcion: 'Texto de Instagram para un resultado',
-    prompt: (d) =>
-      `${VOZ}\n\nEscribe el texto de una publicación de Instagram con el resultado de un partido.\n` +
-      `Old Brads ${d.golesFavor} - ${d.golesContra} ${d.rival}\n` +
-      `Fecha: ${d.fecha ?? ''}\nGoleadores: ${d.goleadores || 'sin registrar'}\n` +
-      `Figura del partido: ${d.figura || 'sin definir'}\n\n` +
-      `Entre 2 y 4 líneas. Que se note si fue victoria, empate o derrota, sin dramatizar la derrota. ` +
-      `Termina con 3 hashtags, uno de ellos #OldBrads. Devuelve solo el texto.`,
-  },
-  caption_citacion: {
-    descripcion: 'Texto de Instagram para una citación',
-    prompt: (d) =>
-      `${VOZ}\n\nEscribe una citación breve para el grupo del equipo.\n` +
-      `Rival: ${d.rival}\nFecha: ${d.fecha ?? ''}\nHora: ${d.hora ?? 'por confirmar'}\n` +
-      `Cancha: ${d.cancha ?? 'por confirmar'}\n\n` +
-      `Máximo 3 líneas. Directo, que la gente confirme si va. Devuelve solo el texto.`,
-  },
   informe_partido: {
     descripcion: 'Informe del partido para la reunión de la directiva',
     maxTokens: 3000,
@@ -118,14 +100,6 @@ const TAREAS = {
       `Si un tema lo menciona más de uno, dilo. Si no hubo comentarios, dilo en una línea.\n` +
       `PARA LA REUNIÓN — dos o tres puntos concretos para decidir el miércoles, en viñetas con guión.\n\n` +
       `No inventes datos que no estén arriba. No pongas hashtags ni emojis. Devuelve solo el informe.`,
-  },
-  presentacion_jugador: {
-    descripcion: 'Presentación de un jugador',
-    prompt: (d) =>
-      `${VOZ}\n\nEscribe la presentación de un jugador para Instagram.\n` +
-      `Nombre: ${d.nombre}\nPosición: ${d.posicion || 'sin definir'}\nCamiseta: ${d.numero ?? '—'}\n` +
-      `Media de su carta: ${d.media ?? '—'}\nGoles esta temporada: ${d.goles ?? 0}\n\n` +
-      `Dos líneas, en segunda o tercera persona. Devuelve solo el texto.`,
   },
 }
 

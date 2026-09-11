@@ -327,6 +327,9 @@ export default function Partidos() {
   const puntuales = useMemo(() => rows.filter((r) => r.asistio === true && r.puntual === true).length, [rows])
   const atrasados = useMemo(() => rows.filter((r) => r.asistio === true && r.puntual === false).length, [rows])
   const noLlegaron = useMemo(() => rows.filter((r) => r.asistio === false).length, [rows])
+  /* Los que fueron y no jugaron: lesionados, sancionados o sin minutos. Cada
+     uno suma el punto de apoyo, así que conviene tenerlos a la vista. */
+  const fueronSinJugar = useMemo(() => rows.filter((r) => r.asistio === true && !r.jugo).length, [rows])
 
   if (loading) return <Spinner />
 
@@ -494,9 +497,13 @@ export default function Partidos() {
               <span className="text-xs font-semibold text-slate-500">Marcar de una vez:</span>
               <Button variant="secondary" onClick={() => marcarTodos({ asistio: true })}>Fueron todos los citados</Button>
               <Button variant="secondary" onClick={() => marcarTodos({ asistio: true, puntual: true })}>…y todos a la hora</Button>
+              {/* Ir sin jugar suma el punto de apoyo. Si todos jugaron y no se
+                  marca, ese punto se reparte a quien no le toca. */}
+              <Button variant="secondary" onClick={() => marcarTodos({ jugo: true })}>…y todos jugaron</Button>
               <Button variant="secondary" onClick={() => marcarTodos({ asistio: null, puntual: null }, false)}>Limpiar asistencia</Button>
               <span className="ml-auto text-xs text-slate-500">
                 Fueron <b className="text-ink-900">{asistieron}</b> · a la hora <b className="text-ink-900">{puntuales}</b>
+                {fueronSinJugar > 0 && <> · fueron sin jugar <b className="text-ink-900">{fueronSinJugar}</b></>}
                 {atrasados > 0 && <> · tarde <b className="text-rose-600">{atrasados}</b></>}
                 {noLlegaron > 0 && <> · citados que no llegaron <b className="text-rose-600">{noLlegaron}</b></>}
               </span>

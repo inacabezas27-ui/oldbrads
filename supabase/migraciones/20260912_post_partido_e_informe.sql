@@ -125,3 +125,34 @@ drop trigger if exists trg_encuesta_del_partido on public.partidos;
 create trigger trg_encuesta_del_partido
   after insert on public.partidos
   for each row execute function public.crear_encuesta_del_partido();
+
+-- ============================================================
+-- Añadido el mismo día: limpieza_de_auditoria
+-- ============================================================
+
+-- Tabla de apuntes que quedó de una prueba del cálculo de temporadas. No tenía
+-- RLS, así que PostgREST la exponía a cualquiera.
+drop table if exists public._t;
+
+-- Es una función de trigger: nadie tiene por qué poder llamarla como RPC.
+revoke execute on function public.crear_encuesta_del_partido() from public, anon, authenticated;
+
+-- Fijar el search_path, como el resto de las funciones.
+drop function if exists public.plazos_de_partido(date);
+create function public.plazos_de_partido(p_fecha date)
+returns table (confirma timestamptz, abre timestamptz, vota timestamptz)
+language sql immutable set search_path = public as $$
+  select
+    ((p_fecha - 2)::timestamp + time '13:00') at time zone 'America/Santiago',
+    ((p_fecha + 1)::timestamp + time '12:00') at time zone 'America/Santiago',
+    ((p_fecha + 3)::timestamp + time '09:00') at time zone 'America/Santiago';
+$$;
+
+-- Al agregar el apodo quedó viva la versión vieja de actualizar_mis_datos, sin
+-- ese campo. Con dos funciones del mismo nombre, PostgREST elige según los
+-- argumentos que lleguen: un día guardaría el apodo y otro lo ignoraría.
+drop function if exists public.actualizar_mis_datos(
+  text, text, text, text, date, text, text, text, text, text, text, text, integer, text);
+
+comment on view public.pub_plantel is
+  'Vista del plantel para la app de jugadores: solo columnas no sensibles. Es SECURITY DEFINER a propósito, porque jugadores tiene RLS de directiva. Revocada para anon.';
