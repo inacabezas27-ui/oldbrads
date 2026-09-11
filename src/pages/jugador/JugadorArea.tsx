@@ -169,7 +169,7 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
 }
 
 /* ============ MI CARTA ============ */
-function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string }) {
+function MiCarta({ jugador, userId, esDirectiva }: { jugador: Jugador | null; userId: string; esDirectiva?: boolean }) {
   const [d, setD] = useState<Desglose | null>(null)
   const [ajustes, setAjustes] = useState<AjustesCarta | null>(null)
 
@@ -216,7 +216,17 @@ function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string 
   }, [jugador, userId])
 
   if (!jugador) {
-    return (
+    // La cuenta de la directiva no es de nadie del plantel: no tiene carta y
+    // eso está bien, no es un error que alguien tenga que arreglar.
+    return esDirectiva ? (
+      <div className="rounded-2xl bg-white/5 p-8 text-center ring-1 ring-white/10">
+        <p className="text-slate-300">Esta es la cuenta de la directiva, no tiene carta propia.</p>
+        <p className="mt-1 text-sm text-slate-500">
+          Para ver tu carta entra con tu cuenta de jugador.{' '}
+          <Link to="/panel" className="underline" style={{ color: BRONCE }}>Ir a la herramienta de gestión →</Link>
+        </p>
+      </div>
+    ) : (
       <div className="rounded-2xl bg-white/5 p-8 text-center ring-1 ring-white/10">
         <p className="text-slate-300">Tu usuario todavía no está enlazado a un jugador del plantel.</p>
         <p className="mt-1 text-sm text-slate-500">Avísale a la directiva para que lo asocie.</p>
@@ -837,7 +847,7 @@ export default function JugadorArea() {
             </button>
           ))}
         </div>
-        {tab === 'carta' && <MiCarta jugador={miJugador} userId={user!.id} />}
+        {tab === 'carta' && <MiCarta jugador={miJugador} userId={user!.id} esDirectiva={esDirectiva} />}
         {tab === 'datos' && <MisDatos onGuardado={cargarMiCarta} />}
         {tab === 'partido' && (
           <ProximoPartido partido={citado} jugadorId={jugadorId} plantel={plantel} onRespuesta={setMiConfirmacion} />

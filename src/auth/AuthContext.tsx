@@ -17,6 +17,10 @@ type AuthState = {
   perfil: Perfil | null
   loading: boolean
   perfilLoading: boolean
+  /** true cuando ya se sabe el rol del usuario conectado (o no hay sesión).
+   *  Sin esto, el primer render tiene sesión pero todavía no rol, y quien
+   *  decide a dónde mandar a alguien lo manda al lugar equivocado. */
+  perfilListo: boolean
   esDirectiva: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
@@ -30,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [perfil, setPerfil] = useState<Perfil | null>(null)
   const [perfilLoading, setPerfilLoading] = useState(false)
+  // De qué usuario es el perfil que está cargado ahora mismo.
+  const [perfilDe, setPerfilDe] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -56,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const uid = session?.user?.id
     if (!uid) {
       setPerfil(null)
+      setPerfilDe(null)
       return
     }
     let cancel = false
@@ -63,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     cargarPerfil(uid).then((p) => {
       if (!cancel) {
         setPerfil(p)
+        setPerfilDe(uid)
         setPerfilLoading(false)
       }
     })
@@ -93,6 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         perfil,
         loading,
         perfilLoading,
+        perfilListo: !session || perfilDe === session.user.id,
         esDirectiva: perfil?.rol === 'directiva',
         signIn,
         signOut,

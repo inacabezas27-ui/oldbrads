@@ -1,19 +1,23 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { Field, Input } from '../components/ui'
+import { Field, Input, Spinner } from '../components/ui'
 import Crest from '../components/Crest'
 
 const BRONCE = '#c0782a'
 
 export default function Login() {
-  const { session, signIn } = useAuth()
+  const { session, signIn, loading: cargandoSesion, perfilListo, esDirectiva } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  if (session) return <Navigate to="/panel" replace />
+  // Esta puerta es la de la herramienta, pero la usa gente del plantel que
+  // llega buscando su carta. Si la cuenta no es de la directiva, se la manda
+  // a su zona en vez de dejarla en una pantalla que no le sirve.
+  if (cargandoSesion || (session && !perfilListo)) return <Spinner />
+  if (session) return <Navigate to={esDirectiva ? '/panel' : '/jugadores'} replace />
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,7 +39,7 @@ export default function Login() {
         </div>
         <form onSubmit={onSubmit} className="space-y-4 rounded-2xl bg-white p-6 shadow-2xl ring-1 ring-black/5">
           <Field label="Correo">
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="directiva@oldbrads.com" required autoFocus />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="directiva@oldbrads.cl" required autoFocus />
           </Field>
           <Field label="Contraseña">
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />

@@ -24,8 +24,10 @@ import { Importar } from './pages/modulos'
 export default function App() {
   return (
     <Routes>
-      {/* La web pública vive en la app `sitio/`. La plataforma parte en el login. */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      {/* La web pública vive en la app `sitio/`. Acá la raíz es la zona de
+          jugadores, que es donde entran 25 de las 26 cuentas; la herramienta
+          de gestión está detrás de /login. */}
+      <Route path="/" element={<Navigate to="/jugadores" replace />} />
       {/* Área de los 25 jugadores (celular). Ojo: este path lo tienen ellos, no cambiarlo. */}
       <Route path="/jugadores" element={<JugadorArea />} />
       <Route path="/login" element={<Login />} />
@@ -56,7 +58,7 @@ export default function App() {
         <Route path="/importar" element={<Importar />} />
         <Route path="/configuracion" element={<Configuracion />} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/jugadores" replace />} />
     </Routes>
   )
 }
