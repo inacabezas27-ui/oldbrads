@@ -12,6 +12,10 @@ const CAMPOS: { k: keyof AjustesCarta; label: string; ayuda: string }[] = [
   { k: 'pts_asistir', label: 'Ir al partido', ayuda: 'Suma aunque no haya jugado.' },
   { k: 'pts_puntual', label: 'Llegar a la hora', ayuda: 'Solo si además fue.' },
   { k: 'pts_titular', label: 'Ser titular', ayuda: 'Al que el DT pone de entrada.' },
+  { k: 'pts_responde', label: 'Dijo a tiempo si iba', ayuda: 'Antes del jueves a las 13:00.' },
+  { k: 'pts_vota', label: 'Votó el partido', ayuda: 'Antes del martes a las 21:00, si fue al partido.' },
+  { k: 'pts_encuesta', label: 'Cada encuesta respondida', ayuda: 'Una sola vez por encuesta, no por partido.' },
+  { k: 'pts_cuotas_al_dia', label: 'Al día con las cuotas', ayuda: 'Una sola vez, mientras no deba ninguna.' },
   { k: 'pts_victoria', label: 'Ganamos', ayuda: 'A todos los que jugaron ese partido.' },
   { k: 'pts_empate', label: 'Empatamos', ayuda: 'A todos los que jugaron ese partido.' },
   { k: 'pts_valla', label: 'Arco en cero', ayuda: 'A todos los que jugaron: defender es de los once.' },
@@ -55,7 +59,12 @@ function AjustesDeCarta() {
     const cerrar = (bruto: number) => Math.max(a.piso, Math.min(a.tope, bruto))
     const nivel = (m: number) => [...NIVELES].reverse().find((n) => m >= n.desde)
     const victorias = Math.round(partidos * 0.6) // temporada normal: se gana algo más de la mitad
-    const banca = cerrar(a.base + partidos * (a.pts_asistir + a.pts_puntual) + victorias * a.pts_victoria)
+    const banca = cerrar(
+      a.base
+      + partidos * (a.pts_asistir + a.pts_puntual + a.pts_responde + a.pts_vota)
+      + victorias * a.pts_victoria
+      + a.pts_cuotas_al_dia,
+    )
     const titular = cerrar(banca + partidos * a.pts_titular)
     return {
       victorias,
@@ -162,8 +171,8 @@ function AjustesDeCarta() {
             <span>partidos:</span>
           </div>
           <p className="text-sm text-slate-700">
-            Ganando <b>{simulacion.victorias}</b> de esos partidos, quien va a todos y siempre a la hora pero
-            entra desde la banca termina en{' '}
+            Ganando <b>{simulacion.victorias}</b> de esos partidos, quien va a todos, llega a la hora, responde
+            siempre, vota siempre y está al día con las cuotas, pero entra desde la banca, termina en{' '}
             <b className="text-brand-700">{simulacion.banca.media}</b>
             {simulacion.banca.nivel && <> — carta <b>{simulacion.banca.nivel.nombre}</b></>}. El mismo jugador,
             de titular fijo, termina en <b className="text-brand-700">{simulacion.titular.media}</b>
@@ -172,7 +181,7 @@ function AjustesDeCarta() {
           <p className="mt-1 text-sm text-slate-700">
             {simulacion.faltanParaTope > 0
               ? <>Para llegar al máximo le faltan <b>{simulacion.faltanParaTope}</b> puntos, que solo salen de
-                  goles, asistencias, arcos en cero y de que sus compañeros lo voten.</>
+                  goles, asistencias, arcos en cero, encuestas y de que sus compañeros lo voten.</>
               : <>Ya llega al máximo sin jugar bien.</>}
           </p>
           {simulacion.faltanParaTope === 0 && (

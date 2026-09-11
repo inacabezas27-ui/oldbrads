@@ -452,11 +452,11 @@ export default function Partidos() {
                     <b className="text-ink-900">confirmar: {plazoCorto(detalle.cierre_confirmacion)}</b>
                     {' · '}
                     <b className="text-ink-900">votar: {plazoCorto(detalle.cierre_votacion)}</b>.
-                    {' '}Al vencer, el que no respondió o no votó pierde un punto de su carta, y la votación se
-                    cierra sola.
+                    {' '}Después de esa hora ya no se puede ganar el punto de esa fecha, y la votación se cierra
+                    sola con lo que haya.
                   </>
                 ) : (
-                  <>Este partido no tiene plazos automáticos: nadie pierde puntos por no responder ni por no votar.</>
+                  <>Este partido no tiene plazos automáticos: responder o votar suma igual, a cualquier hora.</>
                 )}
               </p>
               {msg && <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-medium text-ink-900 ring-1 ring-slate-200">{msg}</p>}
@@ -571,25 +571,26 @@ export default function Partidos() {
               </table>
             </div>
             <p className="mt-2 text-xs text-slate-400">
-              La media se recalcula sola. Suma: ir +1 · a la hora +1 · titular +1 · ganamos +1 · arco en cero +1
-              (+2 más al arquero) · gol +2 · asistencia +2 · podio de la votación +3/+2/+1. Resta: estar citado y no
-              llegar −3 · llegar tarde −1 · no decir si ibas −1 · ir y no votar −1 · cuota atrasada −2. Gol y
-              asistencia valen lo mismo a propósito, y el arco en cero lo ganan todos los que jugaron. Quien avisa
-              que no va, o está lesionado, no pierde puntos; dejar la puntualidad en «—» no suma ni resta. Los
-              números se cambian en <Link to="/configuracion" className="underline">Configuración</Link>.
+              La media se recalcula sola. Suma: ir +1 · a la hora +1 · titular +1 · decir a tiempo si iba +1 ·
+              votar +1 · arco en cero +1 (+2 más al arquero) · gol +2 · asistencia +2 · podio de la votación
+              +3/+2/+1. Fuera del partido: cada encuesta respondida +1 y estar al día con las cuotas +2. Lo único
+              que resta es estar citado y no llegar, −3. Gol y asistencia valen lo mismo a propósito, y el arco en
+              cero lo ganan todos los que jugaron. Quien avisa que no va, o está lesionado, no pierde nada; dejar
+              la puntualidad en «—» no suma ni resta. Los números se cambian en{' '}
+              <Link to="/configuracion" className="underline">Configuración</Link>.
             </p>
 
             {(sinResponder.length > 0 || sinVotar.length > 0) && (
               <div className="mt-3 rounded-xl bg-rose-50/70 p-3 text-xs ring-1 ring-rose-100">
                 {sinResponder.length > 0 && (
                   <p className="text-rose-800">
-                    Perdieron un punto por no decir si iban:{' '}
+                    No alcanzaron a decir si iban, así que no suman ese punto:{' '}
                     <b>{sinResponder.map((r) => nombreCorto(r.jugador)).join(', ')}</b>
                   </p>
                 )}
                 {sinVotar.length > 0 && (
                   <p className="mt-1 text-rose-800">
-                    Fueron al partido y no votaron:{' '}
+                    Fueron al partido y no votaron, así que no suman ese punto:{' '}
                     <b>{sinVotar.map((r) => nombreCorto(r.jugador)).join(', ')}</b>
                   </p>
                 )}

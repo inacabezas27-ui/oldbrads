@@ -16,6 +16,8 @@ export type Jugador = {
   talla_short: string | null
   numero_camiseta: number | null
   posicion: string | null
+  /** Como le dice el equipo. Es el nombre que sale en la carta. */
+  apodo?: string | null
   grupo_wsp: string | null
   activo: boolean
   created_at: string
@@ -256,6 +258,7 @@ export type MisDatosFicha = {
   talla_short: string | null
   numero_camiseta: number | null
   posicion: string | null
+  apodo: string | null
 }
 
 export const POSICIONES = ['Arquero', 'Defensa central', 'Lateral', 'Mediocampista', 'Extremo', 'Delantero'] as const
@@ -281,6 +284,11 @@ export type AjustesCarta = {
   /** Arco en cero: lo gana todo el equipo, y el arquero se lleva un plus. */
   pts_valla: number
   pts_valla_arquero: number
+  /** Cumplir con el equipo desde la plataforma. */
+  pts_responde: number
+  pts_vota: number
+  pts_encuesta: number
+  pts_cuotas_al_dia: number
   /** El podio de la votación, estilo Balón de Oro. */
   pts_voto_1: number
   pts_voto_2: number

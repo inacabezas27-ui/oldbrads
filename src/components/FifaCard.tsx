@@ -34,7 +34,9 @@ export default function FifaCard({
 }) {
   const overall = j.carta_overall ?? 70
   const t = nivelDe(overall)
-  const apellido = (j.apellido_paterno || nombreCompleto(j)).toUpperCase()
+  // En la polera va solo el número, así que el nombre de la carta es el apodo
+  // con el que lo llama el equipo. Si no puso ninguno, el apellido.
+  const apellido = (j.apodo || j.apellido_paterno || nombreCompleto(j)).toUpperCase()
   const pos = dt ? 'DT' : posicionAbrev(j.posicion)
   const foto = (esNivelMaximo(overall) ? j.foto_accion_url : null) || j.foto_url
 

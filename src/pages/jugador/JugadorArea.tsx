@@ -68,9 +68,11 @@ function JugadorLogin() {
 }
 
 type Desglose = {
-  asistio: number; puntual: number; titular: number; victorias: number; empates: number
-  vallas: number; goles: number; asistencias: number; votos: number; extra: number
-  noFue: number; atrasos: number; sinResponder: number; sinVotar: number
+  asistio: number; puntual: number; titular: number; responde: number; vota: number
+  victorias: number; empates: number; vallas: number
+  goles: number; asistencias: number; votos: number; extra: number
+  encuestas: number; cuotasAlDia: boolean
+  noFue: number
 }
 
 /* De dónde sale cada punto de la media. */
@@ -85,9 +87,10 @@ function Fila({ label, cantidad, puntos, resta = false }: { label: string; canti
 }
 
 type FilaPJ = {
+  partido_id: string
   asistio: boolean | null; puntual: boolean | null; jugo: boolean; titular: boolean
+  confirmado: string | null; pen_sin_responder: boolean
   goles: number; asistencias: number; puntos_voto: number; puntos_extra: number
-  pen_sin_responder: boolean; pen_sin_votar: boolean
   partidos: { goles_favor: number | null; goles_contra: number | null } | { goles_favor: number | null; goles_contra: number | null }[] | null
 }
 
@@ -95,26 +98,38 @@ type FilaPJ = {
    sistema no motiva a nada. */
 function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
   const [abierto, setAbierto] = useState(false)
-  const suma: [string, number][] = [
-    ['Ir al partido', a.pts_asistir],
-    ['Llegar a la hora', a.pts_puntual],
-    ['Ser titular', a.pts_titular],
+  const porFecha: [string, number][] = [
+    ['Fuiste al partido', a.pts_asistir],
+    ['Llegaste a la hora', a.pts_puntual],
+    ['Fuiste titular', a.pts_titular],
+    ['Dijiste a tiempo si ibas', a.pts_responde],
+    ['Votaste el partido', a.pts_vota],
+    [esArquero ? 'Arco en cero (eres arquero)' : 'Arco en cero (a todo el que jugó)', a.pts_valla + (esArquero ? a.pts_valla_arquero : 0)],
     ['Ganamos (si jugaste)', a.pts_victoria],
     ['Empatamos (si jugaste)', a.pts_empate],
-    [esArquero ? 'Arco en cero (eres arquero)' : 'Arco en cero (a todo el que jugó)', a.pts_valla + (esArquero ? a.pts_valla_arquero : 0)],
     ['Gol', a.pts_gol],
     ['Asistencia', a.pts_asistencia],
     ['1° de la votación (MVP)', a.pts_voto_1],
     ['2° de la votación', a.pts_voto_2],
     ['3° a 5° de la votación', a.pts_voto_3a5],
   ]
+  const deLaTemporada: [string, number][] = [
+    ['Cada encuesta del club que respondes', a.pts_encuesta],
+    ['Estar al día con las cuotas', a.pts_cuotas_al_dia],
+  ]
   const resta: [string, number][] = [
     ['Estabas citado y no llegaste', a.pen_no_fue],
     ['Llegaste tarde', a.pen_atraso],
-    ['No dijiste si ibas (jueves 13:00)', a.pen_no_responde],
-    ['Fuiste y no votaste (martes 21:00)', a.pen_no_vota],
     ['Cada cuota atrasada', a.pen_cuota],
   ]
+  const lista = (items: [string, number][], signo: '+' | '−') =>
+    items.filter(([, v]) => v > 0).map(([k, v]) => (
+      <div key={k} className="flex justify-between py-0.5 text-sm">
+        <span className="text-slate-400">{k}</span>
+        <span className={`font-bold ${signo === '+' ? 'text-white' : 'text-rose-300'}`}>{signo}{v}</span>
+      </div>
+    ))
+  const hayResta = resta.some(([, v]) => v > 0)
   return (
     <div className="mt-4 w-full max-w-xs">
       <button
@@ -125,22 +140,26 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
       </button>
       {abierto && (
         <div className="mt-2 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
-          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: BRONCE }}>Suma</p>
-          {suma.filter(([, v]) => v > 0).map(([k, v]) => (
-            <div key={k} className="flex justify-between py-0.5 text-sm">
-              <span className="text-slate-400">{k}</span><span className="font-bold text-white">+{v}</span>
-            </div>
-          ))}
-          <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-300">Resta</p>
-          {resta.filter(([, v]) => v > 0).map(([k, v]) => (
-            <div key={k} className="flex justify-between py-0.5 text-sm">
-              <span className="text-slate-400">{k}</span><span className="font-bold text-rose-300">−{v}</span>
-            </div>
-          ))}
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: BRONCE }}>En cada fecha</p>
+          {lista(porFecha, '+')}
+          <p className="mt-3 text-xs font-bold uppercase tracking-wide" style={{ color: BRONCE }}>Durante la temporada</p>
+          {lista(deLaTemporada, '+')}
+          {hayResta && (
+            <>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-300">Lo único que resta</p>
+              {lista(resta, '−')}
+            </>
+          )}
           <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-slate-500">
-            Un gol y una asistencia valen lo mismo: no hay ninguna ventaja en buscar el gol propio. El arco en cero
-            y la victoria los ganan todos los que jugaron. Avisar que no vas, o que estás lesionado, no te quita
-            nada: lo que resta es no avisar.
+            Casi todo suma: la carta sube haciendo las cosas, no baja por no hacerlas. La única resta es anotarte y
+            no llegar, porque ahí el equipo se queda con menos gente de la que contaba. Avisar que no vas, o que
+            estás lesionado, no te quita nada. Un gol y una asistencia valen lo mismo, y el arco en cero lo ganan
+            todos los que jugaron.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-slate-500">
+            Los plazos: el <b className="text-slate-400">jueves a las 13:00</b> para decir si vas y el{' '}
+            <b className="text-slate-400">martes a las 21:00</b> para votar. Después de esa hora el punto de esa
+            fecha ya no se puede ganar.
           </p>
         </div>
       )}
@@ -149,7 +168,7 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
 }
 
 /* ============ MI CARTA ============ */
-function MiCarta({ jugador }: { jugador: Jugador | null }) {
+function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string }) {
   const [d, setD] = useState<Desglose | null>(null)
   const [ajustes, setAjustes] = useState<AjustesCarta | null>(null)
 
@@ -158,10 +177,13 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
     Promise.all([
       supabase
         .from('partido_jugadores')
-        .select('asistio, puntual, jugo, titular, goles, asistencias, puntos_voto, puntos_extra, pen_sin_responder, pen_sin_votar, partidos(goles_favor, goles_contra)')
+        .select('partido_id, asistio, puntual, jugo, titular, confirmado, pen_sin_responder, goles, asistencias, puntos_voto, puntos_extra, partidos(goles_favor, goles_contra)')
         .eq('jugador_id', jugador.id),
       supabase.from('ajustes_carta').select('*').eq('id', 1).maybeSingle(),
-    ]).then(([{ data: pjs }, { data: aj }]) => {
+      supabase.from('votos').select('partido_id').eq('votante_user_id', userId),
+      supabase.from('encuesta_participantes').select('encuesta_id'),
+      supabase.rpc('mis_cuotas_atrasadas'),
+    ]).then(([{ data: pjs }, { data: aj }, { data: vts }, { data: eps }, { data: atrasadas }]) => {
       const filas = (pjs ?? []) as FilaPJ[]
       // La relación llega como arreglo desde PostgREST según cómo se pida.
       const marcador = (f: FilaPJ) => (Array.isArray(f.partidos) ? f.partidos[0] : f.partidos) ?? null
@@ -169,10 +191,13 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
         const m = marcador(f)
         return f.jugo && m && m.goles_favor != null && m.goles_contra != null
       })
+      const votados = new Set(((vts ?? []) as { partido_id: string }[]).map((v) => v.partido_id))
       setD({
         asistio: filas.filter((f) => f.asistio === true).length,
         puntual: filas.filter((f) => f.asistio === true && f.puntual === true).length,
         titular: filas.filter((f) => f.jugo && f.titular).length,
+        responde: filas.filter((f) => f.confirmado !== null && !f.pen_sin_responder).length,
+        vota: filas.filter((f) => votados.has(f.partido_id)).length,
         victorias: jugados.filter((f) => marcador(f)!.goles_favor! > marcador(f)!.goles_contra!).length,
         empates: jugados.filter((f) => marcador(f)!.goles_favor! === marcador(f)!.goles_contra!).length,
         vallas: jugados.filter((f) => marcador(f)!.goles_contra === 0).length,
@@ -180,14 +205,13 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
         asistencias: filas.reduce((a, f) => a + f.asistencias, 0),
         votos: filas.reduce((a, f) => a + f.puntos_voto, 0),
         extra: filas.reduce((a, f) => a + f.puntos_extra, 0),
+        encuestas: ((eps ?? []) as unknown[]).length,
+        cuotasAlDia: Number(atrasadas ?? 0) === 0,
         noFue: filas.filter((f) => f.asistio === false).length,
-        atrasos: filas.filter((f) => f.asistio === true && f.puntual === false).length,
-        sinResponder: filas.filter((f) => f.pen_sin_responder).length,
-        sinVotar: filas.filter((f) => f.pen_sin_votar).length,
       })
       setAjustes((aj as AjustesCarta) ?? null)
     })
-  }, [jugador])
+  }, [jugador, userId])
 
   if (!jugador) {
     return (
@@ -235,29 +259,30 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
           <Fila label="Fuiste al partido" cantidad={d.asistio} puntos={d.asistio * ajustes.pts_asistir} />
           <Fila label="Llegaste a la hora" cantidad={d.puntual} puntos={d.puntual * ajustes.pts_puntual} />
           {!jugador.es_dt && <Fila label="Fuiste titular" cantidad={d.titular} puntos={d.titular * ajustes.pts_titular} />}
+          <Fila label="Dijiste a tiempo si ibas" cantidad={d.responde} puntos={d.responde * ajustes.pts_responde} />
+          <Fila label="Votaste el partido" cantidad={d.vota} puntos={d.vota * ajustes.pts_vota} />
+          {!jugador.es_dt && <Fila label="Arco en cero" cantidad={d.vallas} puntos={d.vallas * puntosValla} />}
           {!jugador.es_dt && <Fila label="Ganamos" cantidad={d.victorias} puntos={d.victorias * ajustes.pts_victoria} />}
           {!jugador.es_dt && <Fila label="Empatamos" cantidad={d.empates} puntos={d.empates * ajustes.pts_empate} />}
-          {!jugador.es_dt && <Fila label="Arco en cero" cantidad={d.vallas} puntos={d.vallas * puntosValla} />}
           {jugador.es_dt && <Fila label="Ganamos" cantidad={d.victorias} puntos={d.victorias * ajustes.pts_dt_victoria} />}
           {jugador.es_dt && <Fila label="Empatamos" cantidad={d.empates} puntos={d.empates * ajustes.pts_dt_empate} />}
           {!jugador.es_dt && <Fila label="Goles" cantidad={d.goles} puntos={d.goles * ajustes.pts_gol} />}
           {!jugador.es_dt && <Fila label="Asistencias" cantidad={d.asistencias} puntos={d.asistencias * ajustes.pts_asistencia} />}
           {!jugador.es_dt && <Fila label="Podio de la votación" cantidad={d.votos} puntos={d.votos * ajustes.pts_voto} />}
+          <Fila label="Encuestas respondidas" cantidad={d.encuestas} puntos={d.encuestas * ajustes.pts_encuesta} />
+          <Fila label="Al día con las cuotas" cantidad={d.cuotasAlDia ? 1 : 0} puntos={ajustes.pts_cuotas_al_dia} />
           <Fila label="Puntos extra" cantidad={d.extra} puntos={d.extra * ajustes.pts_extra} />
           <Fila label="Estabas citado y no fuiste" cantidad={d.noFue} puntos={d.noFue * ajustes.pen_no_fue} resta />
-          <Fila label="Llegaste tarde" cantidad={d.atrasos} puntos={d.atrasos * ajustes.pen_atraso} resta />
-          <Fila label="No dijiste si ibas" cantidad={d.sinResponder} puntos={d.sinResponder * ajustes.pen_no_responde} resta />
-          <Fila label="Fuiste y no votaste" cantidad={d.sinVotar} puntos={d.sinVotar * ajustes.pen_no_vota} resta />
-          {d.asistio + d.goles + d.asistencias + d.votos + d.extra === 0 && (
-            <p className="py-2 text-sm text-slate-500">Todavía no hay partidos cargados. Tu media parte en {ajustes.base}.</p>
+          {d.asistio + d.responde + d.goles + d.asistencias + d.votos + d.extra === 0 && (
+            <p className="py-2 text-sm text-slate-500">Todavía no sumas nada. Tu media parte en {ajustes.base}.</p>
           )}
         </div>
       )}
       {ajustes && <Reglas a={ajustes} esArquero={esArquero} />}
       <p className="mt-4 max-w-xs text-center text-xs text-slate-500">
         {jugador.es_dt
-          ? `Como DT tu media sube por estar, llegar a la hora y por los resultados del equipo. El máximo es ${ajustes?.tope ?? 99}.`
-          : `Un gol y una asistencia valen lo mismo, y el arco en cero lo ganan todos los que jugaron: la carta sube jugando para el equipo. El máximo es ${ajustes?.tope ?? 99}.`}
+          ? `Como DT tu media sube por estar, llegar a la hora, cumplir con el equipo y por los resultados. El máximo es ${ajustes?.tope ?? 99}.`
+          : `Casi todo suma y casi nada resta: la carta sube haciendo las cosas. El máximo es ${ajustes?.tope ?? 99}.`}
       </p>
     </div>
   )
@@ -809,7 +834,7 @@ export default function JugadorArea() {
             </button>
           ))}
         </div>
-        {tab === 'carta' && <MiCarta jugador={miJugador} />}
+        {tab === 'carta' && <MiCarta jugador={miJugador} userId={user!.id} />}
         {tab === 'datos' && <MisDatos onGuardado={cargarMiCarta} />}
         {tab === 'partido' && (
           <ProximoPartido partido={citado} jugadorId={jugadorId} plantel={plantel} onRespuesta={setMiConfirmacion} />

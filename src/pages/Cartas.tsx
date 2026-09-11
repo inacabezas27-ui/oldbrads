@@ -34,6 +34,7 @@ export default function Cartas() {
     const patch = {
       posicion: edit.posicion,
       numero_camiseta: edit.numero_camiseta ? Number(edit.numero_camiseta) : null,
+      apodo: edit.apodo || null,
       foto_url: edit.foto_url || null,
       foto_accion_url: edit.foto_accion_url || null,
     }
@@ -92,6 +93,9 @@ export default function Cartas() {
                   <Input type="number" value={edit.numero_camiseta ?? ''} onChange={(e) => setEdit({ ...edit, numero_camiseta: e.target.value ? Number(e.target.value) : null })} />
                 </Field>
               </div>
+              <Field label="Apodo (el nombre de la carta)">
+                <Input value={edit.apodo ?? ''} onChange={(e) => setEdit({ ...edit, apodo: e.target.value.slice(0, 14) })} placeholder="Si está vacío sale el apellido" />
+              </Field>
               <Field label="Foto de perfil (URL)">
                 <Input value={edit.foto_url ?? ''} onChange={(e) => setEdit({ ...edit, foto_url: e.target.value })} placeholder="/img/jugador.jpg o https://..." />
               </Field>

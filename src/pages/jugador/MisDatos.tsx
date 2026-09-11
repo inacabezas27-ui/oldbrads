@@ -132,6 +132,7 @@ export default function MisDatos({ onGuardado }: { onGuardado?: () => void }) {
       p_talla_short: f.talla_short,
       p_numero_camiseta: f.numero_camiseta === null || (f.numero_camiseta as unknown as string) === '' ? null : Number(f.numero_camiseta),
       p_posicion: f.posicion,
+      p_apodo: f.apodo,
     })
     setGuardando(false)
     if (error) {
@@ -188,6 +189,19 @@ export default function MisDatos({ onGuardado }: { onGuardado?: () => void }) {
         </Campo>
         <Campo label="Dirección">
           <input value={f.direccion ?? ''} onChange={(e) => set('direccion', e.target.value)} className={inputCls} />
+        </Campo>
+        <Campo label="Apodo">
+          <input
+            value={f.apodo ?? ''}
+            onChange={(e) => set('apodo', e.target.value.slice(0, 14))}
+            maxLength={14}
+            placeholder="Como te dice el equipo"
+            className={inputCls}
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Es el nombre que sale en tu carta. En la polera va solo el número, así que este es el nombre con el
+            que te conoce el equipo. Máximo 14 letras; si lo dejas vacío sale tu apellido.
+          </p>
         </Campo>
         <Campo label="Posición" ancho="mitad">
           <select value={f.posicion ?? ''} onChange={(e) => set('posicion', e.target.value)} className={inputCls}>
