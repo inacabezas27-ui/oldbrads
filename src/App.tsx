@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useAuth } from './auth/AuthContext'
+import { Spinner } from './components/ui'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -21,13 +23,22 @@ import Configuracion from './pages/Configuracion'
 import Certificados from './pages/Certificados'
 import { Importar } from './pages/modulos'
 
+/** La raíz no es una página: es el cruce que manda a cada uno a lo suyo. */
+function Inicio() {
+  const { session, loading, perfilListo, esDirectiva } = useAuth()
+  if (loading || (session && !perfilListo)) return <Spinner />
+  // Sin sesión, a la zona de jugadores: ahí entran 25 de las 26 cuentas, y
+  // la directiva llega igual porque desde su login se la redirige.
+  if (!session) return <Navigate to="/jugadores" replace />
+  return <Navigate to={esDirectiva ? '/panel' : '/jugadores'} replace />
+}
+
 export default function App() {
   return (
     <Routes>
-      {/* La web pública vive en la app `sitio/`. Acá la raíz es la zona de
-          jugadores, que es donde entran 25 de las 26 cuentas; la herramienta
-          de gestión está detrás de /login. */}
-      <Route path="/" element={<Navigate to="/jugadores" replace />} />
+      {/* La web pública vive en la app `sitio/`. Acá la raíz manda a cada uno
+          a lo suyo: la directiva a la herramienta y el plantel a su carta. */}
+      <Route path="/" element={<Inicio />} />
       {/* Área de los 25 jugadores (celular). Ojo: este path lo tienen ellos, no cambiarlo. */}
       <Route path="/jugadores" element={<JugadorArea />} />
       <Route path="/login" element={<Login />} />

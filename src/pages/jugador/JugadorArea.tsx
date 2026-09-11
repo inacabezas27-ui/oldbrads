@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { nivelDe, siguienteNivel, usuarioAEmail } from '../../lib/jugadorAuth'
@@ -169,7 +169,7 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
 }
 
 /* ============ MI CARTA ============ */
-function MiCarta({ jugador, userId, esDirectiva }: { jugador: Jugador | null; userId: string; esDirectiva?: boolean }) {
+function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string }) {
   const [d, setD] = useState<Desglose | null>(null)
   const [ajustes, setAjustes] = useState<AjustesCarta | null>(null)
 
@@ -216,17 +216,7 @@ function MiCarta({ jugador, userId, esDirectiva }: { jugador: Jugador | null; us
   }, [jugador, userId])
 
   if (!jugador) {
-    // La cuenta de la directiva no es de nadie del plantel: no tiene carta y
-    // eso está bien, no es un error que alguien tenga que arreglar.
-    return esDirectiva ? (
-      <div className="rounded-2xl bg-white/5 p-8 text-center ring-1 ring-white/10">
-        <p className="text-slate-300">Esta es la cuenta de la directiva, no tiene carta propia.</p>
-        <p className="mt-1 text-sm text-slate-500">
-          Para ver tu carta entra con tu cuenta de jugador.{' '}
-          <Link to="/panel" className="underline" style={{ color: BRONCE }}>Ir a la herramienta de gestión →</Link>
-        </p>
-      </div>
-    ) : (
+    return (
       <div className="rounded-2xl bg-white/5 p-8 text-center ring-1 ring-white/10">
         <p className="text-slate-300">Tu usuario todavía no está enlazado a un jugador del plantel.</p>
         <p className="mt-1 text-sm text-slate-500">Avísale a la directiva para que lo asocie.</p>
@@ -536,6 +526,11 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
   // sale de lo que la persona vio en la cancha.
   const [fui, setFui] = useState(false)
   const [idsQueJugaron, setIdsQueJugaron] = useState<Set<string>>(new Set())
+  // Votar es una decisión, no un formulario que queda abierto para siempre.
+  // Una vez votado se muestra lo elegido, y se vuelve a abrir solo si la
+  // persona dice que quiere cambiarlo.
+  const [yaVoto, setYaVoto] = useState(false)
+  const [editando, setEditando] = useState(false)
 
   const plantel = plantelCompleto.filter(
     (j) => j.id !== jugadorId && !j.es_dt && idsQueJugaron.has(j.id),
@@ -560,6 +555,9 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
           next[v.posicion - 1] = v.votado_jugador_id
         })
         setPicks(next)
+        const votado = next.every(Boolean)
+        setYaVoto(votado)
+        setEditando(!votado)
       }
       setLoading(false)
     }
@@ -584,7 +582,13 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
     const rows = picks.map((jid, i) => ({ partido_id: partido.id, votado_jugador_id: jid, posicion: i + 1 }))
     const { error } = await supabase.from('votos').insert(rows)
     setSaving(false)
-    setMsg(error ? 'No se pudo guardar: ' + error.message : '¡Voto guardado! Gracias por votar. 💚')
+    if (error) {
+      setMsg('No se pudo guardar: ' + error.message)
+      return
+    }
+    setMsg('¡Voto guardado! Gracias por votar. 💚')
+    setYaVoto(true)
+    setEditando(false)
   }
 
   if (loading) return <p className="text-center text-slate-400">Cargando…</p>
@@ -608,6 +612,43 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
       </div>
     )
   }
+  const nombreDe = (id: string) => {
+    const j = plantelCompleto.find((x) => x.id === id)
+    return j ? nombreCompleto(j) : '—'
+  }
+
+  // Ya votó: se muestra lo que eligió, cerrado.
+  if (yaVoto && !editando) {
+    return (
+      <div>
+        <CabeceraPartido partido={partido} etiqueta="Ya votaste" />
+        <div className="rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+          <p className="mb-3 text-center text-sm text-slate-300">Tu top 5 de este partido</p>
+          <div className="space-y-2">
+            {picks.map((id, idx) => (
+              <div key={idx} className="flex items-center gap-3">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ background: BRONCE }}>{idx + 1}°</span>
+                <span className="text-sm text-white">{nombreDe(id)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {msg && <p className="mt-4 rounded-lg bg-white/10 px-3 py-2 text-center text-sm font-medium text-white">{msg}</p>}
+        <Plazo
+          hasta={partido.cierre_votacion}
+          texto="Puedes cambiarlo hasta el"
+          vencido="La votación ya se cerró: tu voto quedó como está."
+        />
+        <button
+          onClick={() => { setEditando(true); setMsg(null) }}
+          className="mt-4 w-full rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-white hover:bg-white/20"
+        >
+          Cambiar mi voto
+        </button>
+      </div>
+    )
+  }
+
   if (plantel.length < 5) {
     return (
       <div>
@@ -653,6 +694,14 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
         className="mt-5 w-full rounded-xl px-4 py-3 font-bold text-white disabled:opacity-50" style={{ background: completos ? BRONCE : '#555' }}>
         {saving ? 'Guardando…' : completos ? 'Guardar mi voto' : 'Elige los 5 jugadores'}
       </button>
+      {yaVoto && (
+        <button
+          onClick={() => { setEditando(false); setMsg(null) }}
+          className="mt-2 w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-400 hover:text-white"
+        >
+          Dejar mi voto como estaba
+        </button>
+      )}
     </div>
   )
 }
@@ -749,6 +798,9 @@ export default function JugadorArea() {
     return <div className="flex min-h-screen items-center justify-center bg-ink-900 text-slate-400">Cargando…</div>
   }
   if (!session) return <JugadorLogin />
+  // La cuenta de la directiva no es de nadie del plantel: no tiene carta que
+  // mirar ni partido que confirmar, así que va derecho a lo suyo.
+  if (esDirectiva && !jugadorId) return <Navigate to="/panel" replace />
 
   const tabs: { id: Tab; label: string; punto: boolean }[] = [
     { id: 'carta', label: 'Carta', punto: false },
@@ -849,7 +901,7 @@ export default function JugadorArea() {
             </button>
           ))}
         </div>
-        {tab === 'carta' && <MiCarta jugador={miJugador} userId={user!.id} esDirectiva={esDirectiva} />}
+        {tab === 'carta' && <MiCarta jugador={miJugador} userId={user!.id} />}
         {tab === 'datos' && <MisDatos onGuardado={cargarMiCarta} />}
         {tab === 'partido' && (
           <ProximoPartido partido={citado} jugadorId={jugadorId} plantel={plantel} onRespuesta={setMiConfirmacion} />
