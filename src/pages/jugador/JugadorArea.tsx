@@ -789,7 +789,9 @@ export default function JugadorArea() {
           <Crest size={36} />
           <div className="leading-tight">
             <p className="font-black">Hola, {saludo}</p>
-            <p className="text-[11px] text-slate-400">Zona Jugadores</p>
+            {/* El correo a la vista: con 26 cuentas en los mismos celulares,
+                saber con cuál estás conectado evita la mitad de los enredos. */}
+            <p className="text-[11px] text-slate-400">{user?.email ?? 'Zona Jugadores'}</p>
           </div>
         </div>
         <button onClick={signOut} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20">Salir</button>
