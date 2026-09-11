@@ -68,7 +68,7 @@ function JugadorLogin() {
 }
 
 type Desglose = {
-  asistio: number; puntual: number; titular: number; responde: number; vota: number
+  asistio: number; puntual: number; titular: number; apoyo: number; responde: number; vota: number
   victorias: number; empates: number; vallas: number
   goles: number; asistencias: number; votos: number; extra: number
   encuestas: number; cuotasAlDia: boolean
@@ -102,6 +102,7 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
     ['Fuiste al partido', a.pts_asistir],
     ['Llegaste a la hora', a.pts_puntual],
     ['Fuiste titular', a.pts_titular],
+    ['Fuiste igual sin poder jugar', a.pts_apoyo],
     ['Dijiste a tiempo si ibas', a.pts_responde],
     ['Votaste el partido', a.pts_vota],
     [esArquero ? 'Arco en cero (eres arquero)' : 'Arco en cero (a todo el que jugó)', a.pts_valla + (esArquero ? a.pts_valla_arquero : 0)],
@@ -153,8 +154,8 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
           <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-slate-500">
             Casi todo suma: la carta sube haciendo las cosas, no baja por no hacerlas. La única resta es anotarte y
             no llegar, porque ahí el equipo se queda con menos gente de la que contaba. Avisar que no vas, o que
-            estás lesionado, no te quita nada. Un gol y una asistencia valen lo mismo, y el arco en cero lo ganan
-            todos los que jugaron.
+            estás lesionado, no te quita nada, y si estás lesionado y vas igual a la cancha, suma. Un gol y una
+            asistencia valen lo mismo, y el arco en cero lo ganan todos los que jugaron.
           </p>
           <p className="mt-2 text-xs leading-relaxed text-slate-500">
             Los plazos: el <b className="text-slate-400">jueves a las 13:00</b> para decir si vas y el{' '}
@@ -196,6 +197,7 @@ function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string 
         asistio: filas.filter((f) => f.asistio === true).length,
         puntual: filas.filter((f) => f.asistio === true && f.puntual === true).length,
         titular: filas.filter((f) => f.jugo && f.titular).length,
+        apoyo: filas.filter((f) => f.asistio === true && !f.jugo).length,
         responde: filas.filter((f) => f.confirmado !== null && !f.pen_sin_responder).length,
         vota: filas.filter((f) => votados.has(f.partido_id)).length,
         victorias: jugados.filter((f) => marcador(f)!.goles_favor! > marcador(f)!.goles_contra!).length,
@@ -259,6 +261,7 @@ function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string 
           <Fila label="Fuiste al partido" cantidad={d.asistio} puntos={d.asistio * ajustes.pts_asistir} />
           <Fila label="Llegaste a la hora" cantidad={d.puntual} puntos={d.puntual * ajustes.pts_puntual} />
           {!jugador.es_dt && <Fila label="Fuiste titular" cantidad={d.titular} puntos={d.titular * ajustes.pts_titular} />}
+          {!jugador.es_dt && <Fila label="Fuiste igual sin poder jugar" cantidad={d.apoyo} puntos={d.apoyo * ajustes.pts_apoyo} />}
           <Fila label="Dijiste a tiempo si ibas" cantidad={d.responde} puntos={d.responde * ajustes.pts_responde} />
           <Fila label="Votaste el partido" cantidad={d.vota} puntos={d.vota * ajustes.pts_vota} />
           {!jugador.es_dt && <Fila label="Arco en cero" cantidad={d.vallas} puntos={d.vallas * puntosValla} />}
@@ -281,7 +284,7 @@ function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string 
       {ajustes && <Reglas a={ajustes} esArquero={esArquero} />}
       <p className="mt-4 max-w-xs text-center text-xs text-slate-500">
         {jugador.es_dt
-          ? `Como DT tu media sube por estar, llegar a la hora, cumplir con el equipo y por los resultados. El máximo es ${ajustes?.tope ?? 99}.`
+          ? `Como DT tu media sube por ir al partido, llegar a la hora, cumplir con el equipo y por cada partido que gana el equipo estando tú en la cancha. El máximo es ${ajustes?.tope ?? 99}.`
           : `Casi todo suma y casi nada resta: la carta sube haciendo las cosas. El máximo es ${ajustes?.tope ?? 99}.`}
       </p>
     </div>

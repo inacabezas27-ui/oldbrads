@@ -571,9 +571,10 @@ export default function Partidos() {
               </table>
             </div>
             <p className="mt-2 text-xs text-slate-400">
-              La media se recalcula sola. Suma: ir +1 · a la hora +1 · titular +1 · decir a tiempo si iba +1 ·
-              votar +1 · arco en cero +1 (+2 más al arquero) · gol +2 · asistencia +2 · podio de la votación
-              +3/+2/+1. Fuera del partido: cada encuesta respondida +1 y estar al día con las cuotas +2. Lo único
+              La media se recalcula sola. Suma: ir +1 · a la hora +1 · titular +1 · ir igual sin poder jugar +1 ·
+              decir a tiempo si iba +1 · votar +1 · arco en cero +1 (+2 más al arquero) · gol +2 · asistencia +2 ·
+              podio de la votación +3/+2/+1. El DT suma +3 por partido ganado y +1 por empatado, siempre que haya
+              ido. Fuera del partido: cada encuesta respondida +1 y estar al día con las cuotas +2. Lo único
               que resta es estar citado y no llegar, −3. Gol y asistencia valen lo mismo a propósito, y el arco en
               cero lo ganan todos los que jugaron. Quien avisa que no va, o está lesionado, no pierde nada; dejar
               la puntualidad en «—» no suma ni resta. Los números se cambian en{' '}

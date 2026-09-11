@@ -284,6 +284,8 @@ export type AjustesCarta = {
   /** Arco en cero: lo gana todo el equipo, y el arquero se lleva un plus. */
   pts_valla: number
   pts_valla_arquero: number
+  /** Fue al partido sin poder jugar (lesionado, o no le tocó) y alentó igual. */
+  pts_apoyo: number
   /** Cumplir con el equipo desde la plataforma. */
   pts_responde: number
   pts_vota: number

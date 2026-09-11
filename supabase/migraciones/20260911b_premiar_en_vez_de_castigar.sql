@@ -226,3 +226,23 @@ returns integer language sql stable security definer set search_path = public as
 $$;
 revoke execute on function public.mis_cuotas_atrasadas() from public, anon;
 grant execute on function public.mis_cuotas_atrasadas() to authenticated;
+
+-- ============================================================
+-- Añadido el mismo día: premio_al_que_va_sin_poder_jugar
+--
+-- El que está lesionado, o no le toca jugar, y va igual a la cancha a alentar,
+-- suma. Hasta aquí quedaba con menos puntos que cualquiera que entró dos
+-- minutos. Vale +1, lo mismo que ser titular: si pagara más que jugar,
+-- convendría no jugar.
+-- ============================================================
+alter table public.ajustes_carta
+  add column if not exists pts_apoyo integer not null default 1;
+
+update public.ajustes_carta set pts_apoyo = 1, actualizado_en = now() where id = 1;
+
+-- En media_de_jugador, dentro del bloque "estar":
+--
+--   + case when pj.asistio is true and not pj.jugo and not j.es_dt
+--          then a.pts_apoyo else 0 end
+--
+-- (la definición completa y vigente de la función está en Supabase; ver LEEME)

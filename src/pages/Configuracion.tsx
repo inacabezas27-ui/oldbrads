@@ -12,6 +12,7 @@ const CAMPOS: { k: keyof AjustesCarta; label: string; ayuda: string }[] = [
   { k: 'pts_asistir', label: 'Ir al partido', ayuda: 'Suma aunque no haya jugado.' },
   { k: 'pts_puntual', label: 'Llegar a la hora', ayuda: 'Solo si además fue.' },
   { k: 'pts_titular', label: 'Ser titular', ayuda: 'Al que el DT pone de entrada.' },
+  { k: 'pts_apoyo', label: 'Fue igual sin jugar', ayuda: 'Lesionado o sin minutos, pero fue a alentar. No debería pagar más que jugar.' },
   { k: 'pts_responde', label: 'Dijo a tiempo si iba', ayuda: 'Antes del jueves a las 13:00.' },
   { k: 'pts_vota', label: 'Votó el partido', ayuda: 'Antes del martes a las 21:00, si fue al partido.' },
   { k: 'pts_encuesta', label: 'Cada encuesta respondida', ayuda: 'Una sola vez por encuesta, no por partido.' },
