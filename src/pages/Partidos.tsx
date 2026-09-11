@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { CONFIRMACIONES, nombreCorto, type Confirmacion, type EstadoPartido, type Jugador, type Partido, type PartidoJugador, type Temporada } from '../lib/types'
+import { CONFIRMACIONES, nombreCompleto, nombreCorto, type Confirmacion, type EstadoPartido, type Jugador, type Partido, type PartidoJugador, type Temporada } from '../lib/types'
 import { fecha, hoyISO } from '../lib/format'
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Spinner } from '../components/ui'
 
@@ -15,7 +15,7 @@ const CICLO: { estado: EstadoPartido; corto: string; ayuda: string; avanzar: str
   {
     estado: 'citacion',
     corto: 'Citación',
-    ayuda: 'Los jugadores confirman desde su celular si van. Marca aquí a los citados definitivos.',
+    ayuda: 'Está citado todo el plantel y cada uno responde desde su celular. Al marcar el partido como jugado, la nómina queda con los que dijeron que van.',
     avanzar: 'Marcar como jugado',
   },
   {
@@ -61,6 +61,43 @@ function resultadoDe(p: Partido): 'ganado' | 'empatado' | 'perdido' | null {
   if (p.goles_favor > p.goles_contra) return 'ganado'
   if (p.goles_favor < p.goles_contra) return 'perdido'
   return 'empatado'
+}
+
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+
+/** "sábado 12 de septiembre" — como se escribe en el grupo, no como fecha de sistema. */
+function fechaLarga(iso: string | null) {
+  if (!iso) return ''
+  const d = new Date(iso + 'T00:00:00')
+  return `${DIAS[d.getDay()]} ${d.getDate()} de ${d.toLocaleDateString('es-CL', { month: 'long' })}`
+}
+
+/** La nómina en texto plano, con nombre completo y número de camiseta: se pega
+    tal cual en el grupo o se le pasa a quien arma las imágenes de Instagram. */
+function CopiarNomina({ partido, nomina }: { partido: Partido; nomina: Jugador[] }) {
+  const [copiado, setCopiado] = useState(false)
+  const texto = [
+    `Old Brads ${partido.es_local ? 'vs' : '@'} ${partido.rival}`,
+    [fechaLarga(partido.fecha), partido.hora, partido.cancha].filter(Boolean).join(' · '),
+    '',
+    `NÓMINA (${nomina.length})`,
+    ...nomina.map((j) => `${j.numero_camiseta ?? '—'}. ${nombreCompleto(j)}`),
+  ].join('\n')
+
+  const copiar = async () => {
+    try {
+      await navigator.clipboard.writeText(texto)
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    } catch {
+      setCopiado(false)
+    }
+  }
+  return (
+    <Button variant="secondary" onClick={copiar} disabled={nomina.length === 0}>
+      {copiado ? '✓ Copiada' : `Copiar nómina (${nomina.length})`}
+    </Button>
+  )
 }
 
 function Paso({ n, activo, hecho, children }: { n: number; activo: boolean; hecho: boolean; children: string }) {
@@ -134,7 +171,9 @@ export default function Partidos() {
       .select()
       .single()
     if (partido) {
-      const cit = jugadores.map((j) => ({ partido_id: partido.id, jugador_id: j.id, citado: false }))
+      // Al crear el partido queda citado todo el plantel: nadie queda fuera
+      // por omisión. La nómina se arma después, con las confirmaciones.
+      const cit = jugadores.map((j) => ({ partido_id: partido.id, jugador_id: j.id, citado: true }))
       if (cit.length) await supabase.from('partido_jugadores').insert(cit)
     }
     setSaving(false)
@@ -155,7 +194,7 @@ export default function Partidos() {
     if (faltantes.length) {
       const { data: nuevos } = await supabase
         .from('partido_jugadores')
-        .insert(faltantes.map((j) => ({ partido_id: p.id, jugador_id: j.id, citado: false })))
+        .insert(faltantes.map((j) => ({ partido_id: p.id, jugador_id: j.id, citado: p.estado === 'citacion' })))
         .select()
       for (const n of nuevos ?? []) existentes.set(n.jugador_id, n)
     }
@@ -203,11 +242,19 @@ export default function Partidos() {
       return
     }
     setMsg(null)
-    // Al cerrar la citación, los que dijeron que iban quedan citados.
-    if (siguiente.estado === 'jugado') {
-      for (const r of rows.filter((x) => x.confirmado === 'si' && !x.citado)) {
-        await updateRow(r.id, { citado: true })
+    // Al crear el partido queda citado todo el plantel. Al cerrar la citación
+    // eso se convierte en la nómina: quedan los que dijeron que van.
+    // Si no confirmó nadie (pasa mientras la gente no entra a la app) no se
+    // toca nada: borrar la citación entera dejaría el partido sin nómina.
+    if (siguiente.estado === 'jugado' && rows.some((r) => r.confirmado === 'si')) {
+      const cambiar = async (lista: typeof rows, citado: boolean) => {
+        const ids = lista.filter((r) => r.citado !== citado).map((r) => r.id)
+        if (!ids.length) return
+        setRows((prev) => prev.map((r) => (ids.includes(r.id) ? { ...r, citado } : r)))
+        await supabase.from('partido_jugadores').update({ citado }).in('id', ids)
       }
+      await cambiar(rows.filter((r) => r.confirmado === 'si'), true)
+      await cambiar(rows.filter((r) => r.confirmado !== 'si'), false)
     }
     await updatePartido({ estado: siguiente.estado })
   }
@@ -240,6 +287,15 @@ export default function Partidos() {
   }
 
   const citados = useMemo(() => rows.filter((r) => r.citado), [rows])
+  /* La nómina para copiar: los citados y, mientras nadie lo esté, quienes
+     confirmaron que van. Ordenada por número de camiseta. */
+  const nomina = useMemo(() => {
+    const base = rows.filter((r) => r.citado)
+    const lista = base.length ? base : rows.filter((r) => r.confirmado === 'si')
+    return lista
+      .map((r) => r.jugador)
+      .sort((a, b) => (a.numero_camiseta ?? 99) - (b.numero_camiseta ?? 99))
+  }, [rows])
   const confirmaciones = useMemo(
     () => ({
       si: rows.filter((r) => r.confirmado === 'si').length,
@@ -364,6 +420,7 @@ export default function Partidos() {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <p className="flex-1 text-xs text-slate-500">{info.ayuda}</p>
                 {info.avanzar && <Button onClick={avanzar}>{info.avanzar}</Button>}
+                <CopiarNomina partido={detalle} nomina={nomina} />
                 {detalle.estado === 'votacion' && (
                   <>
                     <span className="text-xs font-semibold text-slate-500">{votantes} votaron</span>

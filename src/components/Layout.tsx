@@ -28,7 +28,6 @@ const sections: Section[] = [
       { to: '/formacion', label: 'Formación', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 2v20M2 12h20M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z' },
       { to: '/premios', label: 'Premios', icon: 'M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3' },
       { to: '/certificados', label: 'Certificados', icon: 'M9 12h6M9 16h4M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z' },
-      { to: '/multimedia', label: 'Multimedia', icon: 'M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6' },
     ],
   },
   {

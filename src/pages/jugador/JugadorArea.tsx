@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../auth/AuthContext'
 import { nivelDe, siguienteNivel, usuarioAEmail } from '../../lib/jugadorAuth'
-import { nombreCompleto, type AjustesCarta, type Jugador, type Partido } from '../../lib/types'
+import { nombreCorto, nombreCompleto, type AjustesCarta, type Jugador, type Partido } from '../../lib/types'
 import { fecha as fmtFecha } from '../../lib/format'
 import Crest from '../../components/Crest'
 import FifaCard from '../../components/FifaCard'
@@ -221,10 +221,38 @@ function Sanciones({ jugadorId }: { jugadorId: string | null }) {
 }
 
 /* ============ PRÓXIMO PARTIDO: CONFIRMAR ASISTENCIA ============ */
-function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugadorId: string | null }) {
+/* Quién va y quién no, a la vista de todos: así nadie tiene que armar la
+   lista a mano en el grupo de WhatsApp. */
+type Grupo = { titulo: string; color: string; jugadores: Jugador[] }
+
+function ListaGrupo({ g }: { g: Grupo }) {
+  if (!g.jugadores.length) return null
+  return (
+    <div className="border-t border-white/10 py-2.5 first:border-0 first:pt-0">
+      <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: g.color }}>
+        {g.titulo} <span className="text-slate-500">({g.jugadores.length})</span>
+      </p>
+      <p className="mt-1 text-sm leading-relaxed text-slate-300">
+        {g.jugadores.map((j) => nombreCorto(j)).join(' · ')}
+      </p>
+    </div>
+  )
+}
+
+function ProximoPartido({
+  partido,
+  jugadorId,
+  plantel,
+  onRespuesta,
+}: {
+  partido: Partido | null
+  jugadorId: string | null
+  plantel: Jugador[]
+  onRespuesta?: (r: Respuesta) => void
+}) {
   // Ojo: las sanciones se muestran aunque no haya partido citado.
   const [respuesta, setRespuesta] = useState<Respuesta | null>(null)
-  const [conteo, setConteo] = useState({ si: 0, duda: 0, no: 0 })
+  const [porJugador, setPorJugador] = useState<Record<string, Respuesta | null>>({})
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -234,18 +262,29 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
       .from('partido_jugadores')
       .select('jugador_id, confirmado')
       .eq('partido_id', partido.id)
-    const filas = (data ?? []) as { jugador_id: string; confirmado: Respuesta | null }[]
-    setConteo({
-      si: filas.filter((f) => f.confirmado === 'si').length,
-      duda: filas.filter((f) => f.confirmado === 'duda' || f.confirmado === 'lesionado').length,
-      no: filas.filter((f) => f.confirmado === 'no').length,
-    })
-    setRespuesta(filas.find((f) => f.jugador_id === jugadorId)?.confirmado ?? null)
+    const mapa: Record<string, Respuesta | null> = {}
+    for (const f of (data ?? []) as { jugador_id: string; confirmado: Respuesta | null }[]) {
+      mapa[f.jugador_id] = f.confirmado
+    }
+    setPorJugador(mapa)
+    setRespuesta(jugadorId ? mapa[jugadorId] ?? null : null)
   }, [partido, jugadorId])
 
   useEffect(() => {
     cargar()
   }, [cargar])
+
+  const grupos: Grupo[] = useMemo(() => {
+    const de = (test: (r: Respuesta | null) => boolean) =>
+      plantel.filter((j) => test(porJugador[j.id] ?? null))
+    return [
+      { titulo: 'Van', color: '#4ade80', jugadores: de((r) => r === 'si') },
+      { titulo: 'En duda', color: '#fbbf24', jugadores: de((r) => r === 'duda') },
+      { titulo: 'Lesionados', color: '#fb923c', jugadores: de((r) => r === 'lesionado') },
+      { titulo: 'No van', color: '#f87171', jugadores: de((r) => r === 'no') },
+      { titulo: 'Todavía no responden', color: '#94a3b8', jugadores: de((r) => r === null) },
+    ]
+  }, [plantel, porJugador])
 
   const responder = async (valor: Respuesta) => {
     if (!partido) return
@@ -258,6 +297,7 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
       return
     }
     setRespuesta(valor)
+    onRespuesta?.(valor)
     cargar()
   }
 
@@ -280,10 +320,13 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
     )
   }
 
+  const van = grupos[0].jugadores.length
+
   return (
     <div>
       <Sanciones jugadorId={jugadorId} />
       <CabeceraPartido partido={partido} etiqueta="Próximo partido" />
+      <p className="mb-1 text-center text-sm font-semibold text-white">Está citado todo el plantel.</p>
       <p className="mb-3 text-center text-sm text-slate-300">¿Vas a este partido?</p>
       <div className="grid grid-cols-2 gap-2">
         {RESPUESTAS.map((r) => (
@@ -300,18 +343,25 @@ function ProximoPartido({ partido, jugadorId }: { partido: Partido | null; jugad
           </button>
         ))}
       </div>
-      {respuesta && (
+      {respuesta ? (
         <p className="mt-3 text-center text-xs text-slate-400">
           Tu respuesta quedó guardada. Puedes cambiarla mientras la citación siga abierta.
         </p>
+      ) : (
+        <p className="mt-3 text-center text-xs" style={{ color: BRONCE }}>
+          Todavía no respondes. Con tu respuesta la directiva arma la nómina.
+        </p>
       )}
       {msg && <p className="mt-3 rounded-lg bg-white/10 px-3 py-2 text-center text-sm text-white">{msg}</p>}
-      <div className="mt-6 rounded-xl bg-white/5 p-4 text-center text-sm ring-1 ring-white/10">
-        <span className="font-black text-white">{conteo.si}</span> <span className="text-slate-400">van</span>
-        <span className="mx-2 text-slate-600">·</span>
-        <span className="font-black text-white">{conteo.duda}</span> <span className="text-slate-400">en duda o lesionados</span>
-        <span className="mx-2 text-slate-600">·</span>
-        <span className="font-black text-white">{conteo.no}</span> <span className="text-slate-400">no van</span>
+
+      <div className="mt-6 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+        <p className="mb-2 text-center text-sm">
+          <span className="text-2xl font-black text-white">{van}</span>{' '}
+          <span className="text-slate-400">de {plantel.length} confirmaron que van</span>
+        </p>
+        {grupos.map((g) => (
+          <ListaGrupo key={g.titulo} g={g} />
+        ))}
       </div>
     </div>
   )
@@ -450,6 +500,9 @@ export default function JugadorArea() {
   const [citado, setCitado] = useState<Partido | null>(null)
   const [enVotacion, setEnVotacion] = useState<Partido | null>(null)
   const [encuestasAbiertas, setEncuestasAbiertas] = useState(0)
+  // Lo que el jugador tiene pendiente, para avisarle apenas entra.
+  const [miConfirmacion, setMiConfirmacion] = useState<Respuesta | null>(null)
+  const [votoPendiente, setVotoPendiente] = useState(false)
 
   const jugadorId = perfil?.jugador_id ?? null
 
@@ -497,6 +550,31 @@ export default function JugadorArea() {
       })
   }, [session])
 
+  // ¿Ya respondió la citación?
+  useEffect(() => {
+    if (!citado || !jugadorId) { setMiConfirmacion(null); return }
+    supabase
+      .from('partido_jugadores').select('confirmado')
+      .eq('partido_id', citado.id).eq('jugador_id', jugadorId).maybeSingle()
+      .then(({ data }) => setMiConfirmacion(((data as { confirmado: Respuesta | null } | null)?.confirmado) ?? null))
+  }, [citado, jugadorId, tab])
+
+  // ¿Le toca votar y todavía no vota? Solo vota quien fue al partido.
+  useEffect(() => {
+    if (!enVotacion || !jugadorId || !user) { setVotoPendiente(false); return }
+    const revisar = async () => {
+      const [{ data: fila }, { data: votos }] = await Promise.all([
+        supabase.from('partido_jugadores').select('asistio')
+          .eq('partido_id', enVotacion.id).eq('jugador_id', jugadorId).maybeSingle(),
+        supabase.from('votos').select('id')
+          .eq('partido_id', enVotacion.id).eq('votante_user_id', user.id).limit(1),
+      ])
+      const fue = ((fila as { asistio: boolean | null } | null)?.asistio) === true
+      setVotoPendiente(fue && (votos ?? []).length === 0)
+    }
+    revisar()
+  }, [enVotacion, jugadorId, user, tab])
+
   const saludo = useMemo(() => perfil?.nombre_usuario || (miJugador ? nombreCompleto(miJugador) : 'Jugador'), [perfil, miJugador])
 
   if (loading || (session && perfilLoading)) {
@@ -507,9 +585,34 @@ export default function JugadorArea() {
   const tabs: { id: Tab; label: string; punto: boolean }[] = [
     { id: 'carta', label: 'Carta', punto: false },
     { id: 'datos', label: 'Mis datos', punto: false },
-    { id: 'partido', label: 'Partido', punto: !!citado },
-    { id: 'votaciones', label: 'Votaciones', punto: !!enVotacion || encuestasAbiertas > 0 },
+    { id: 'partido', label: 'Partido', punto: !!citado && !miConfirmacion },
+    { id: 'votaciones', label: 'Votaciones', punto: votoPendiente || encuestasAbiertas > 0 },
   ]
+
+  /* Lo que el jugador tiene pendiente. Es lo primero que ve al entrar: la
+     mayoría abre la app una vez y si no se lo decimos acá, no se entera. */
+  const avisos: { texto: string; accion: string; ir: Tab }[] = []
+  if (citado && jugadorId && !miConfirmacion) {
+    avisos.push({
+      texto: `Estás citado para el partido con ${citado.rival}. Falta tu respuesta.`,
+      accion: 'Decir si voy',
+      ir: 'partido',
+    })
+  }
+  if (enVotacion && votoPendiente) {
+    avisos.push({
+      texto: `Votación abierta del partido con ${enVotacion.rival}. Todavía no votas.`,
+      accion: 'Votar ahora',
+      ir: 'votaciones',
+    })
+  }
+  if (encuestasAbiertas > 0) {
+    avisos.push({
+      texto: `Tienes ${encuestasAbiertas} ${encuestasAbiertas === 1 ? 'encuesta' : 'encuestas'} del club sin responder.`,
+      accion: 'Responder',
+      ir: 'votaciones',
+    })
+  }
 
   return (
     <div className="min-h-screen bg-ink-900 text-white">
@@ -523,6 +626,27 @@ export default function JugadorArea() {
         </div>
         <button onClick={signOut} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20">Salir</button>
       </header>
+
+      {avisos.length > 0 && (
+        <div className="border-b border-white/10 bg-white/5 px-5 py-3">
+          <div className="mx-auto max-w-md space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: BRONCE }}>
+              {avisos.length === 1 ? 'Tienes algo pendiente' : `Tienes ${avisos.length} cosas pendientes`}
+            </p>
+            {avisos.map((a) => (
+              <button
+                key={a.texto}
+                onClick={() => setTab(a.ir)}
+                className="flex w-full items-center gap-3 rounded-xl bg-white/5 px-3 py-2.5 text-left ring-1 ring-white/10 hover:bg-white/10"
+              >
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
+                <span className="flex-1 text-sm text-white">{a.texto}</span>
+                <span className="shrink-0 text-xs font-bold underline" style={{ color: BRONCE }}>{a.accion}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {perfil && !perfil.clave_cambiada && tab !== 'datos' && (
         <button
@@ -557,7 +681,9 @@ export default function JugadorArea() {
         </div>
         {tab === 'carta' && <MiCarta jugador={miJugador} />}
         {tab === 'datos' && <MisDatos onGuardado={cargarMiCarta} />}
-        {tab === 'partido' && <ProximoPartido partido={citado} jugadorId={jugadorId} />}
+        {tab === 'partido' && (
+          <ProximoPartido partido={citado} jugadorId={jugadorId} plantel={plantel} onRespuesta={setMiConfirmacion} />
+        )}
         {tab === 'votaciones' && (
           <div className="space-y-8">
             <Votar partido={enVotacion} userId={user!.id} jugadorId={jugadorId} plantelCompleto={plantel} />

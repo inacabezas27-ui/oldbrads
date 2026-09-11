@@ -19,7 +19,6 @@ import Encuestas from './pages/Encuestas'
 import Estadisticas from './pages/Estadisticas'
 import Configuracion from './pages/Configuracion'
 import Certificados from './pages/Certificados'
-import Multimedia from './pages/Multimedia'
 import { Importar } from './pages/modulos'
 
 export default function App() {
@@ -50,7 +49,6 @@ export default function App() {
         <Route path="/formacion" element={<Formaciones />} />
         <Route path="/premios" element={<Premios />} />
         <Route path="/certificados" element={<Certificados />} />
-        <Route path="/multimedia" element={<Multimedia />} />
         {/* Administración */}
         <Route path="/cuotas" element={<Cuotas />} />
         <Route path="/caja" element={<Caja />} />
