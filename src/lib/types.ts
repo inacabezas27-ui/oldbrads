@@ -27,6 +27,8 @@ export type Jugador = {
   carta_defensa: number | null
   carta_fisico: number | null
   foto_url: string | null
+  /** Foto en pleno partido: se usa recién cuando la carta llega al último nivel. */
+  foto_accion_url?: string | null
   es_dt?: boolean
   pos_formacion?: string | null
 }
@@ -157,6 +159,10 @@ export type Partido = {
   goles_favor: number | null
   goles_contra: number | null
   estado: EstadoPartido
+  /** Jueves 13:00 previo: último plazo para decir si vas. null = sin plazo. */
+  cierre_confirmacion: string | null
+  /** Martes 21:00 posterior: la votación se cierra sola. null = sin plazo. */
+  cierre_votacion: string | null
   mvp_jugador_id: string | null
   notas: string | null
   created_at: string
@@ -180,6 +186,10 @@ export type PartidoJugador = {
   /** Lo que le debe al equipo por faltar o llegar tarde (una promo, etc.). */
   sancion: string | null
   sancion_cumplida: boolean
+  /** Se puso cuando venció el plazo y no había respondido. No se revierte. */
+  pen_sin_responder: boolean
+  /** Fue al partido y no votó antes del martes a las 21:00. No se revierte. */
+  pen_sin_votar: boolean
   /** Lo responde el jugador o lo marca la directiva durante la citación. */
   confirmado: Confirmacion
   confirmado_at: string | null
@@ -263,12 +273,28 @@ export type AjustesCarta = {
   pts_voto: number
   pts_extra: number
   /** Al DT lo miden los resultados del equipo, no las estadísticas personales. */
+  /** Ser titular pesa igual que ir o llegar a la hora. */
+  pts_titular: number
+  /** El resultado es de todos los que jugaron, no solo de los que marcaron. */
+  pts_victoria: number
+  pts_empate: number
+  /** Arco en cero: lo gana todo el equipo, y el arquero se lleva un plus. */
+  pts_valla: number
+  pts_valla_arquero: number
+  /** El podio de la votación, estilo Balón de Oro. */
+  pts_voto_1: number
+  pts_voto_2: number
+  pts_voto_3a5: number
   pts_dt_victoria: number
   pts_dt_empate: number
   /** Penalizaciones: se guardan en positivo y la fórmula las descuenta. */
   pen_no_fue: number
   pen_atraso: number
   pen_cuota: number
+  /** No marcar si vas antes del jueves 13:00. */
+  pen_no_responde: number
+  /** Fuiste al partido y no votaste antes del martes 21:00. */
+  pen_no_vota: number
   dias_gracia_cuota: number
   /** La media no baja de aquí por muchas penalizaciones que haya. */
   piso: number

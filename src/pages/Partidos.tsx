@@ -56,6 +56,13 @@ function cambioDeLlegada(valor: string): Partial<PartidoJugador> {
   return { asistio: null, puntual: null }
 }
 
+/** "jue 10 sep · 13:00", o "sin plazo" si el partido no tiene fecha. */
+function plazoCorto(iso: string | null) {
+  if (!iso) return 'sin plazo'
+  const d = new Date(iso)
+  return `${d.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })}`
+}
+
 function resultadoDe(p: Partido): 'ganado' | 'empatado' | 'perdido' | null {
   if (p.goles_favor == null || p.goles_contra == null) return null
   if (p.goles_favor > p.goles_contra) return 'ganado'
@@ -314,6 +321,8 @@ export default function Partidos() {
     [rows],
   )
   const sancionados = useMemo(() => rows.filter((r) => r.sancion), [rows])
+  const sinResponder = useMemo(() => rows.filter((r) => r.pen_sin_responder), [rows])
+  const sinVotar = useMemo(() => rows.filter((r) => r.pen_sin_votar), [rows])
   const asistieron = useMemo(() => rows.filter((r) => r.asistio === true).length, [rows])
   const puntuales = useMemo(() => rows.filter((r) => r.asistio === true && r.puntual === true).length, [rows])
   const atrasados = useMemo(() => rows.filter((r) => r.asistio === true && r.puntual === false).length, [rows])
@@ -436,6 +445,20 @@ export default function Partidos() {
                   <Link to="/votaciones" className="text-xs font-semibold text-brand-700 underline">Ver los votos</Link>
                 )}
               </div>
+              <p className="mt-3 text-xs text-slate-500">
+                {detalle.cierre_confirmacion || detalle.cierre_votacion ? (
+                  <>
+                    Plazos automáticos —{' '}
+                    <b className="text-ink-900">confirmar: {plazoCorto(detalle.cierre_confirmacion)}</b>
+                    {' · '}
+                    <b className="text-ink-900">votar: {plazoCorto(detalle.cierre_votacion)}</b>.
+                    {' '}Al vencer, el que no respondió o no votó pierde un punto de su carta, y la votación se
+                    cierra sola.
+                  </>
+                ) : (
+                  <>Este partido no tiene plazos automáticos: nadie pierde puntos por no responder ni por no votar.</>
+                )}
+              </p>
               {msg && <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-medium text-ink-900 ring-1 ring-slate-200">{msg}</p>}
             </div>
 
@@ -548,10 +571,30 @@ export default function Partidos() {
               </table>
             </div>
             <p className="mt-2 text-xs text-slate-400">
-              La media se recalcula sola: ir al partido +1 · a la hora +1 · gol +3 · asistencia +2 · punto de voto +1.
-              Resta: estar citado y no llegar −3 · llegar tarde −1 · cuota atrasada −2. Quien avisa que no va, o está
-              lesionado, no pierde puntos. Dejar la puntualidad en «—» no suma ni resta.
+              La media se recalcula sola. Suma: ir +1 · a la hora +1 · titular +1 · ganamos +1 · arco en cero +1
+              (+2 más al arquero) · gol +2 · asistencia +2 · podio de la votación +3/+2/+1. Resta: estar citado y no
+              llegar −3 · llegar tarde −1 · no decir si ibas −1 · ir y no votar −1 · cuota atrasada −2. Gol y
+              asistencia valen lo mismo a propósito, y el arco en cero lo ganan todos los que jugaron. Quien avisa
+              que no va, o está lesionado, no pierde puntos; dejar la puntualidad en «—» no suma ni resta. Los
+              números se cambian en <Link to="/configuracion" className="underline">Configuración</Link>.
             </p>
+
+            {(sinResponder.length > 0 || sinVotar.length > 0) && (
+              <div className="mt-3 rounded-xl bg-rose-50/70 p-3 text-xs ring-1 ring-rose-100">
+                {sinResponder.length > 0 && (
+                  <p className="text-rose-800">
+                    Perdieron un punto por no decir si iban:{' '}
+                    <b>{sinResponder.map((r) => nombreCorto(r.jugador)).join(', ')}</b>
+                  </p>
+                )}
+                {sinVotar.length > 0 && (
+                  <p className="mt-1 text-rose-800">
+                    Fueron al partido y no votaron:{' '}
+                    <b>{sinVotar.map((r) => nombreCorto(r.jugador)).join(', ')}</b>
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* ---- Sanciones ----
                 El descuento de puntos ya es automático; esto es lo que la

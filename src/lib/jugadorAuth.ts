@@ -15,7 +15,11 @@ export const claveInicial = (usuario: string) => `${usuario.toLowerCase().trim()
 
 export const PUNTOS_POR_PUESTO = [5, 4, 3, 2, 1] // 1°=5 ... 5°=1
 
-/* ---- Niveles de la carta ---- */
+/* ---- Niveles de la carta ----
+   La temporada son 12 fechas y todos parten en bronce (45). Yendo a todas y
+   siempre a la hora se llega a plata; siendo además titular, a oro. El último
+   nivel pide aportar en la cancha y que los compañeros te voten: son pocos, y
+   esa es la gracia. */
 export type Nivel = { nombre: string; desde: number; bg: string; text: string; sil: string }
 
 export const NIVELES: Nivel[] = [
@@ -28,22 +32,32 @@ export const NIVELES: Nivel[] = [
   },
   {
     nombre: 'Plata',
-    desde: 78,
+    desde: 65,
     bg: 'linear-gradient(160deg,#f2f4f7 0%,#cfd6e2 45%,#9aa6b8 100%)',
     text: '#26303f',
     sil: 'rgba(38,48,63,0.20)',
   },
   {
     nombre: 'Oro',
-    desde: 88,
+    desde: 83,
     bg: 'linear-gradient(160deg,#faecb4 0%,#ecce78 42%,#d3ab44 100%)',
     text: '#3a2e0a',
     sil: 'rgba(58,46,10,0.22)',
+  },
+  {
+    nombre: 'Leyenda',
+    desde: 95,
+    bg: 'linear-gradient(160deg,#2a3b63 0%,#111d36 45%,#05090f 100%)',
+    text: '#f0cf7c',
+    sil: 'rgba(240,207,124,0.20)',
   },
 ]
 
 export const nivelDe = (overall: number): Nivel =>
   [...NIVELES].reverse().find((n) => overall >= n.desde) ?? NIVELES[0]
+
+/** El último nivel cambia la foto: de la de perfil a una en pleno partido. */
+export const esNivelMaximo = (overall: number) => overall >= NIVELES[NIVELES.length - 1].desde
 
 /** Cuánto le falta para el siguiente nivel (null si ya está en el máximo). */
 export const siguienteNivel = (overall: number): { nivel: Nivel; faltan: number } | null => {

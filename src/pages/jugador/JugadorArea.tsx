@@ -67,15 +67,83 @@ function JugadorLogin() {
   )
 }
 
-type Desglose = { asistio: number; puntual: number; goles: number; asistencias: number; votos: number; extra: number; noFue: number; atrasos: number }
+type Desglose = {
+  asistio: number; puntual: number; titular: number; victorias: number; empates: number
+  vallas: number; goles: number; asistencias: number; votos: number; extra: number
+  noFue: number; atrasos: number; sinResponder: number; sinVotar: number
+}
 
 /* De dónde sale cada punto de la media. */
 function Fila({ label, cantidad, puntos, resta = false }: { label: string; cantidad: number; puntos: number; resta?: boolean }) {
-  if (!cantidad) return null
+  if (!cantidad || !puntos) return null
   return (
     <div className="flex items-center justify-between py-1 text-sm">
       <span className="text-slate-400">{label} <span className="text-slate-500">× {cantidad}</span></span>
       <span className={`font-bold ${resta ? 'text-rose-300' : 'text-white'}`}>{resta ? '−' : '+'}{puntos}</span>
+    </div>
+  )
+}
+
+type FilaPJ = {
+  asistio: boolean | null; puntual: boolean | null; jugo: boolean; titular: boolean
+  goles: number; asistencias: number; puntos_voto: number; puntos_extra: number
+  pen_sin_responder: boolean; pen_sin_votar: boolean
+  partidos: { goles_favor: number | null; goles_contra: number | null } | { goles_favor: number | null; goles_contra: number | null }[] | null
+}
+
+/* Las reglas completas, a la vista. Si nadie sabe cómo sube la carta, el
+   sistema no motiva a nada. */
+function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
+  const [abierto, setAbierto] = useState(false)
+  const suma: [string, number][] = [
+    ['Ir al partido', a.pts_asistir],
+    ['Llegar a la hora', a.pts_puntual],
+    ['Ser titular', a.pts_titular],
+    ['Ganamos (si jugaste)', a.pts_victoria],
+    ['Empatamos (si jugaste)', a.pts_empate],
+    [esArquero ? 'Arco en cero (eres arquero)' : 'Arco en cero (a todo el que jugó)', a.pts_valla + (esArquero ? a.pts_valla_arquero : 0)],
+    ['Gol', a.pts_gol],
+    ['Asistencia', a.pts_asistencia],
+    ['1° de la votación (MVP)', a.pts_voto_1],
+    ['2° de la votación', a.pts_voto_2],
+    ['3° a 5° de la votación', a.pts_voto_3a5],
+  ]
+  const resta: [string, number][] = [
+    ['Estabas citado y no llegaste', a.pen_no_fue],
+    ['Llegaste tarde', a.pen_atraso],
+    ['No dijiste si ibas (jueves 13:00)', a.pen_no_responde],
+    ['Fuiste y no votaste (martes 21:00)', a.pen_no_vota],
+    ['Cada cuota atrasada', a.pen_cuota],
+  ]
+  return (
+    <div className="mt-4 w-full max-w-xs">
+      <button
+        onClick={() => setAbierto((v) => !v)}
+        className="w-full rounded-xl bg-white/5 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/10 hover:bg-white/10"
+      >
+        {abierto ? 'Ocultar las reglas' : 'Cómo sube tu carta'}
+      </button>
+      {abierto && (
+        <div className="mt-2 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+          <p className="text-xs font-bold uppercase tracking-wide" style={{ color: BRONCE }}>Suma</p>
+          {suma.filter(([, v]) => v > 0).map(([k, v]) => (
+            <div key={k} className="flex justify-between py-0.5 text-sm">
+              <span className="text-slate-400">{k}</span><span className="font-bold text-white">+{v}</span>
+            </div>
+          ))}
+          <p className="mt-3 text-xs font-bold uppercase tracking-wide text-rose-300">Resta</p>
+          {resta.filter(([, v]) => v > 0).map(([k, v]) => (
+            <div key={k} className="flex justify-between py-0.5 text-sm">
+              <span className="text-slate-400">{k}</span><span className="font-bold text-rose-300">−{v}</span>
+            </div>
+          ))}
+          <p className="mt-3 border-t border-white/10 pt-3 text-xs leading-relaxed text-slate-500">
+            Un gol y una asistencia valen lo mismo: no hay ninguna ventaja en buscar el gol propio. El arco en cero
+            y la victoria los ganan todos los que jugaron. Avisar que no vas, o que estás lesionado, no te quita
+            nada: lo que resta es no avisar.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -88,19 +156,34 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
   useEffect(() => {
     if (!jugador) return
     Promise.all([
-      supabase.from('partido_jugadores').select('asistio, puntual, goles, asistencias, puntos_voto, puntos_extra, confirmado').eq('jugador_id', jugador.id),
+      supabase
+        .from('partido_jugadores')
+        .select('asistio, puntual, jugo, titular, goles, asistencias, puntos_voto, puntos_extra, pen_sin_responder, pen_sin_votar, partidos(goles_favor, goles_contra)')
+        .eq('jugador_id', jugador.id),
       supabase.from('ajustes_carta').select('*').eq('id', 1).maybeSingle(),
     ]).then(([{ data: pjs }, { data: aj }]) => {
-      const filas = (pjs ?? []) as { asistio: boolean | null; puntual: boolean | null; goles: number; asistencias: number; puntos_voto: number; puntos_extra: number; confirmado: string | null }[]
+      const filas = (pjs ?? []) as FilaPJ[]
+      // La relación llega como arreglo desde PostgREST según cómo se pida.
+      const marcador = (f: FilaPJ) => (Array.isArray(f.partidos) ? f.partidos[0] : f.partidos) ?? null
+      const jugados = filas.filter((f) => {
+        const m = marcador(f)
+        return f.jugo && m && m.goles_favor != null && m.goles_contra != null
+      })
       setD({
         asistio: filas.filter((f) => f.asistio === true).length,
         puntual: filas.filter((f) => f.asistio === true && f.puntual === true).length,
+        titular: filas.filter((f) => f.jugo && f.titular).length,
+        victorias: jugados.filter((f) => marcador(f)!.goles_favor! > marcador(f)!.goles_contra!).length,
+        empates: jugados.filter((f) => marcador(f)!.goles_favor! === marcador(f)!.goles_contra!).length,
+        vallas: jugados.filter((f) => marcador(f)!.goles_contra === 0).length,
         goles: filas.reduce((a, f) => a + f.goles, 0),
         asistencias: filas.reduce((a, f) => a + f.asistencias, 0),
         votos: filas.reduce((a, f) => a + f.puntos_voto, 0),
         extra: filas.reduce((a, f) => a + f.puntos_extra, 0),
         noFue: filas.filter((f) => f.asistio === false).length,
         atrasos: filas.filter((f) => f.asistio === true && f.puntual === false).length,
+        sinResponder: filas.filter((f) => f.pen_sin_responder).length,
+        sinVotar: filas.filter((f) => f.pen_sin_votar).length,
       })
       setAjustes((aj as AjustesCarta) ?? null)
     })
@@ -117,6 +200,8 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
   const overall = jugador.carta_overall ?? 70
   const nivel = nivelDe(overall)
   const sig = siguienteNivel(overall)
+  const esArquero = (jugador.posicion ?? '').toLowerCase().includes('arquero')
+  const puntosValla = ajustes ? ajustes.pts_valla + (esArquero ? ajustes.pts_valla_arquero : 0) : 0
   return (
     <div className="flex flex-col items-center">
       <div className="w-52"><FifaCard j={jugador} /></div>
@@ -149,23 +234,53 @@ function MiCarta({ jugador }: { jugador: Jugador | null }) {
           </div>
           <Fila label="Fuiste al partido" cantidad={d.asistio} puntos={d.asistio * ajustes.pts_asistir} />
           <Fila label="Llegaste a la hora" cantidad={d.puntual} puntos={d.puntual * ajustes.pts_puntual} />
+          {!jugador.es_dt && <Fila label="Fuiste titular" cantidad={d.titular} puntos={d.titular * ajustes.pts_titular} />}
+          {!jugador.es_dt && <Fila label="Ganamos" cantidad={d.victorias} puntos={d.victorias * ajustes.pts_victoria} />}
+          {!jugador.es_dt && <Fila label="Empatamos" cantidad={d.empates} puntos={d.empates * ajustes.pts_empate} />}
+          {!jugador.es_dt && <Fila label="Arco en cero" cantidad={d.vallas} puntos={d.vallas * puntosValla} />}
+          {jugador.es_dt && <Fila label="Ganamos" cantidad={d.victorias} puntos={d.victorias * ajustes.pts_dt_victoria} />}
+          {jugador.es_dt && <Fila label="Empatamos" cantidad={d.empates} puntos={d.empates * ajustes.pts_dt_empate} />}
           {!jugador.es_dt && <Fila label="Goles" cantidad={d.goles} puntos={d.goles * ajustes.pts_gol} />}
           {!jugador.es_dt && <Fila label="Asistencias" cantidad={d.asistencias} puntos={d.asistencias * ajustes.pts_asistencia} />}
-          {!jugador.es_dt && <Fila label="Votos de tus compañeros" cantidad={d.votos} puntos={d.votos * ajustes.pts_voto} />}
+          {!jugador.es_dt && <Fila label="Podio de la votación" cantidad={d.votos} puntos={d.votos * ajustes.pts_voto} />}
           <Fila label="Puntos extra" cantidad={d.extra} puntos={d.extra * ajustes.pts_extra} />
-          <Fila label="Dijiste que ibas y no fuiste" cantidad={d.noFue} puntos={d.noFue * ajustes.pen_no_fue} resta />
+          <Fila label="Estabas citado y no fuiste" cantidad={d.noFue} puntos={d.noFue * ajustes.pen_no_fue} resta />
           <Fila label="Llegaste tarde" cantidad={d.atrasos} puntos={d.atrasos * ajustes.pen_atraso} resta />
+          <Fila label="No dijiste si ibas" cantidad={d.sinResponder} puntos={d.sinResponder * ajustes.pen_no_responde} resta />
+          <Fila label="Fuiste y no votaste" cantidad={d.sinVotar} puntos={d.sinVotar * ajustes.pen_no_vota} resta />
           {d.asistio + d.goles + d.asistencias + d.votos + d.extra === 0 && (
             <p className="py-2 text-sm text-slate-500">Todavía no hay partidos cargados. Tu media parte en {ajustes.base}.</p>
           )}
         </div>
       )}
+      {ajustes && <Reglas a={ajustes} esArquero={esArquero} />}
       <p className="mt-4 max-w-xs text-center text-xs text-slate-500">
         {jugador.es_dt
           ? `Como DT tu media sube por estar, llegar a la hora y por los resultados del equipo. El máximo es ${ajustes?.tope ?? 99}.`
-          : `Ir al partido suma +1 y llegar a la hora otro +1. Yendo a todos y siempre puntual terminas la temporada con carta de oro. El máximo es ${ajustes?.tope ?? 99}.`}
+          : `Un gol y una asistencia valen lo mismo, y el arco en cero lo ganan todos los que jugaron: la carta sube jugando para el equipo. El máximo es ${ajustes?.tope ?? 99}.`}
       </p>
     </div>
+  )
+}
+
+/** "jueves 10 de septiembre a las 13:00" — el plazo dicho como lo diría uno. */
+function textoPlazo(iso: string | null) {
+  if (!iso) return null
+  const d = new Date(iso)
+  const dia = d.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })
+  const hora = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return `${dia} a las ${hora}`
+}
+
+/** El plazo, y si ya venció. */
+function Plazo({ hasta, texto, vencido }: { hasta: string | null; texto: string; vencido: string }) {
+  const p = textoPlazo(hasta)
+  if (!p) return null
+  const paso = new Date(hasta!).getTime() < Date.now()
+  return (
+    <p className={`mt-3 rounded-lg px-3 py-2 text-center text-xs ${paso ? 'bg-rose-400/10 text-rose-200' : 'bg-white/5 text-slate-400'}`}>
+      {paso ? vencido : `${texto} ${p}.`}
+    </p>
   )
 }
 
@@ -354,6 +469,12 @@ function ProximoPartido({
       )}
       {msg && <p className="mt-3 rounded-lg bg-white/10 px-3 py-2 text-center text-sm text-white">{msg}</p>}
 
+      <Plazo
+        hasta={partido.cierre_confirmacion}
+        texto="Tienes plazo hasta el"
+        vencido="El plazo para responder venció. La citación se publicó con la nómina de ese momento; responder ahora no devuelve el punto."
+      />
+
       <div className="mt-6 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
         <p className="mb-2 text-center text-sm">
           <span className="text-2xl font-black text-white">{van}</span>{' '}
@@ -463,8 +584,12 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
   return (
     <div>
       <CabeceraPartido partido={partido} etiqueta="Vota el partido" />
-      <p className="mb-3 text-center text-sm text-slate-300">
+      <p className="mb-1 text-center text-sm text-slate-300">
         Elige a los <b>5 mejores</b>, del 1° al 5°. Solo aparecen los que jugaron.
+      </p>
+      <p className="mb-3 text-center text-xs text-slate-500">
+        Se suman todos los votos del equipo y solo el podio de ese total suma carta: 1° +3, 2° +2, 3° a 5° +1.
+        El 1° es el MVP del partido.
       </p>
       <div className="space-y-3">
         {picks.map((val, idx) => (
@@ -480,6 +605,11 @@ function Votar({ partido, userId, jugadorId, plantelCompleto }: { partido: Parti
           </div>
         ))}
       </div>
+      <Plazo
+        hasta={partido.cierre_votacion}
+        texto="La votación se cierra sola el"
+        vencido="La votación ya se cerró."
+      />
       {msg && <p className="mt-4 rounded-lg bg-white/10 px-3 py-2 text-center text-sm font-medium text-white">{msg}</p>}
       <button onClick={guardar} disabled={!completos || saving}
         className="mt-5 w-full rounded-xl px-4 py-3 font-bold text-white disabled:opacity-50" style={{ background: completos ? BRONCE : '#555' }}>

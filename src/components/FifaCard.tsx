@@ -1,8 +1,10 @@
-import { nivelDe } from '../lib/jugadorAuth'
+import { esNivelMaximo, nivelDe } from '../lib/jugadorAuth'
 import { nombreCompleto, posicionAbrev, type Jugador } from '../lib/types'
 import Crest from './Crest'
 
-// La carta sube de material con la media: bronce -> plata (78) -> oro (88).
+// La carta sube de material con la media: bronce -> plata (65) -> oro (83) ->
+// leyenda (95). En el último nivel la foto de perfil se cambia por una en
+// pleno partido, si es que hay: es el premio que se ve de lejos.
 
 /** Medidas de la carta chica. Se exportan para que quien la coloque reserve
  *  el espacio exacto: si el contenedor es más angosto, la carta se desborda
@@ -34,6 +36,7 @@ export default function FifaCard({
   const t = nivelDe(overall)
   const apellido = (j.apellido_paterno || nombreCompleto(j)).toUpperCase()
   const pos = dt ? 'DT' : posicionAbrev(j.posicion)
+  const foto = (esNivelMaximo(overall) ? j.foto_accion_url : null) || j.foto_url
 
   return (
     <button
@@ -50,8 +53,8 @@ export default function FifaCard({
 
         {/* Silueta / foto */}
         <div className="absolute inset-x-0 bottom-0" style={{ height: '80%' }}>
-          {j.foto_url ? (
-            <img src={j.foto_url} alt={apellido} className="h-full w-full object-cover object-top" />
+          {foto ? (
+            <img src={foto} alt={apellido} className="h-full w-full object-cover object-top" />
           ) : (
             <Silueta color={t.sil} />
           )}

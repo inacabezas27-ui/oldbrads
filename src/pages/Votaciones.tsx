@@ -6,6 +6,9 @@ import { PageHeader } from '../components/ui'
 
 type Voto = { partido_id: string; votante_user_id: string; votado_jugador_id: string; posicion: number }
 const PUNTOS: Record<number, number> = { 1: 5, 2: 4, 3: 3, 4: 2, 5: 1 }
+/* Lo que se lleva cada puesto del podio, como el Balón de Oro. Se configura
+   en Configuración; acá va solo para mostrarlo. */
+const A_LA_CARTA = [3, 2, 1, 1, 1]
 
 export default function Votaciones() {
   const [partidos, setPartidos] = useState<Partido[]>([])
@@ -49,7 +52,7 @@ export default function Votaciones() {
     })
     return Object.entries(acc)
       .map(([jid, r]) => ({ jid, ...r }))
-      .sort((a, b) => b.puntos - a.puntos)
+      .sort((a, b) => b.puntos - a.puntos || b.menciones - a.menciones)
   }, [votos])
 
   const votantes = useMemo(() => new Set(votos.map((v) => v.votante_user_id)).size, [votos])
@@ -73,7 +76,10 @@ export default function Votaciones() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Votaciones del partido" subtitle="Revisa el top 5 que eligieron los jugadores (1°=5, 2°=4, 3°=3, 4°=2, 5°=1). Al cerrar, los puntos pasan a las cartas y nadie puede cambiar su voto." />
+      <PageHeader
+        title="Votaciones del partido"
+        subtitle="Cada jugador vota su top 5 y esos votos valen 5-4-3-2-1 solo para armar este ranking. A la carta suma únicamente el podio del total: 1° +3, 2° +2, y 3° a 5° +1. El 1° queda como MVP del partido."
+      />
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <select value={partidoId} onChange={(e) => setPartidoId(e.target.value)}
@@ -95,7 +101,7 @@ export default function Votaciones() {
         <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-              <tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Jugador</th><th className="px-4 py-3 text-center">Menciones</th><th className="px-4 py-3 text-right">Puntos</th></tr>
+              <tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Jugador</th><th className="px-4 py-3 text-center">Menciones</th><th className="px-4 py-3 text-right">Votos</th><th className="px-4 py-3 text-right">A la carta</th></tr>
             </thead>
             <tbody>
               {ranking.map((r, i) => (
@@ -103,7 +109,10 @@ export default function Votaciones() {
                   <td className="px-4 py-2.5 font-bold text-slate-400">{i + 1}</td>
                   <td className="px-4 py-2.5 font-semibold text-ink-900">{plantel[r.jid] ? nombreCompleto(plantel[r.jid]) : '—'}</td>
                   <td className="px-4 py-2.5 text-center text-slate-500">{r.menciones}</td>
-                  <td className="px-4 py-2.5 text-right font-black" style={{ color: '#c0782a' }}>+{r.puntos}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-slate-500">{r.puntos}</td>
+                  <td className="px-4 py-2.5 text-right font-black" style={{ color: i < 5 ? '#c0782a' : '#cbd5e1' }}>
+                    {i < 5 ? `+${A_LA_CARTA[i]}` : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>

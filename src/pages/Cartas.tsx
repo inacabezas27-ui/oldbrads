@@ -35,6 +35,7 @@ export default function Cartas() {
       posicion: edit.posicion,
       numero_camiseta: edit.numero_camiseta ? Number(edit.numero_camiseta) : null,
       foto_url: edit.foto_url || null,
+      foto_accion_url: edit.foto_accion_url || null,
     }
     await supabase.from('jugadores').update(patch).eq('id', edit.id)
     setJugadores((prev) => prev.map((j) => (j.id === edit.id ? { ...j, ...patch } : j)))
@@ -49,7 +50,7 @@ export default function Cartas() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-ink-900">Cartas del plantel</h1>
-          <p className="text-sm text-slate-500">Estilo FIFA · todos parten en 70 y suben con votaciones, goles y asistencias</p>
+          <p className="text-sm text-slate-500">Estilo FIFA · bronce, plata, oro y leyenda · la media se calcula sola</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-500">Ordenar:</span>
@@ -91,12 +92,19 @@ export default function Cartas() {
                   <Input type="number" value={edit.numero_camiseta ?? ''} onChange={(e) => setEdit({ ...edit, numero_camiseta: e.target.value ? Number(e.target.value) : null })} />
                 </Field>
               </div>
-              <Field label="Foto (URL, opcional)">
+              <Field label="Foto de perfil (URL)">
                 <Input value={edit.foto_url ?? ''} onChange={(e) => setEdit({ ...edit, foto_url: e.target.value })} placeholder="/img/jugador.jpg o https://..." />
+              </Field>
+              <Field label="Foto en juego (URL)">
+                <Input value={edit.foto_accion_url ?? ''} onChange={(e) => setEdit({ ...edit, foto_accion_url: e.target.value })} placeholder="Se usa recién en la carta Leyenda" />
               </Field>
               <div className="rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <b className="text-ink-900">Media actual: {edit.carta_overall ?? 70}</b>
-                <p className="mt-1 text-xs text-slate-500">La media sube sola: +votación del partido (top 3), +1 por gol y +1 por asistencia. Nunca baja de 70.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  La media se calcula sola con lo que pasa en los partidos: ir, llegar a la hora, ser titular,
+                  ganar, dejar el arco en cero, goles, asistencias y el podio de la votación. Se ajusta en
+                  Configuración.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="secondary" onClick={() => setEdit(null)}>Cancelar</Button>

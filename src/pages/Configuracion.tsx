@@ -11,15 +11,25 @@ const CAMPOS: { k: keyof AjustesCarta; label: string; ayuda: string }[] = [
   { k: 'tope', label: 'Media máxima', ayuda: 'Nadie pasa de aquí, por bien que juegue.' },
   { k: 'pts_asistir', label: 'Ir al partido', ayuda: 'Suma aunque no haya jugado.' },
   { k: 'pts_puntual', label: 'Llegar a la hora', ayuda: 'Solo si además fue.' },
-  { k: 'pts_gol', label: 'Gol', ayuda: '' },
-  { k: 'pts_asistencia', label: 'Asistencia', ayuda: '' },
-  { k: 'pts_voto', label: 'Punto de voto', ayuda: 'Por cada punto del top 5 de sus compañeros.' },
+  { k: 'pts_titular', label: 'Ser titular', ayuda: 'Al que el DT pone de entrada.' },
+  { k: 'pts_victoria', label: 'Ganamos', ayuda: 'A todos los que jugaron ese partido.' },
+  { k: 'pts_empate', label: 'Empatamos', ayuda: 'A todos los que jugaron ese partido.' },
+  { k: 'pts_valla', label: 'Arco en cero', ayuda: 'A todos los que jugaron: defender es de los once.' },
+  { k: 'pts_valla_arquero', label: '…y al arquero', ayuda: 'Se suma al anterior, solo para el arquero.' },
+  { k: 'pts_gol', label: 'Gol', ayuda: 'Vale lo mismo que una asistencia, a propósito.' },
+  { k: 'pts_asistencia', label: 'Asistencia', ayuda: 'Vale lo mismo que un gol, a propósito.' },
+  { k: 'pts_voto_1', label: 'Votación: 1°', ayuda: 'El más votado del partido. Es el MVP.' },
+  { k: 'pts_voto_2', label: 'Votación: 2°', ayuda: '' },
+  { k: 'pts_voto_3a5', label: 'Votación: 3° a 5°', ayuda: 'Los otros tres del podio.' },
+  { k: 'pts_voto', label: 'Multiplicador de voto', ayuda: 'Déjalo en 1: los puntos del podio ya vienen calculados.' },
   { k: 'pts_extra', label: 'Punto extra', ayuda: 'Los que pone la directiva a mano.' },
   { k: 'pts_dt_victoria', label: 'DT: partido ganado', ayuda: 'Solo para el entrenador.' },
   { k: 'pts_dt_empate', label: 'DT: partido empatado', ayuda: 'Solo para el entrenador.' },
   { k: 'pen_no_fue', label: 'Dijo que iba y no fue', ayuda: 'Se descuenta de la media.' },
   { k: 'pen_atraso', label: 'Llegó tarde', ayuda: 'Además de no ganar el punto por puntualidad.' },
   { k: 'pen_cuota', label: 'Cuota atrasada', ayuda: 'Por cada cuota vencida sin pagar.' },
+  { k: 'pen_no_responde', label: 'No dijo si iba', ayuda: 'Se aplica solo al vencer el jueves a las 13:00.' },
+  { k: 'pen_no_vota', label: 'Fue y no votó', ayuda: 'Se aplica solo al vencer el martes a las 21:00.' },
   { k: 'dias_gracia_cuota', label: 'Días de gracia', ayuda: 'La cuota pesa recién después de estos días.' },
   { k: 'piso', label: 'Media mínima', ayuda: 'Por muchas penalizaciones, nadie baja de aquí.' },
 ]
@@ -31,21 +41,28 @@ function AjustesDeCarta() {
   const [a, setA] = useState<AjustesCarta | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [msg, setMsg] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
-  const [partidos, setPartidos] = useState(14)
+  const [partidos, setPartidos] = useState(12)
 
   useEffect(() => {
     supabase.from('ajustes_carta').select('*').eq('id', 1).maybeSingle()
       .then(({ data }) => setA((data as AjustesCarta) ?? null))
   }, [])
 
-  /* La cuenta que importa: ¿se puede llegar al tope yendo a todo? */
+  /* La cuenta que importa: cómo termina la temporada cada tipo de jugador.
+     Si el que solo asiste ya llega al tope, el fútbol dejó de pesar. */
   const simulacion = useMemo(() => {
     if (!a) return null
-    const porCompromiso = partidos * (a.pts_asistir + a.pts_puntual)
-    const soloAsistiendo = a.base + porCompromiso
-    const faltanParaTope = Math.max(0, a.tope - soloAsistiendo)
-    const nivel = [...NIVELES].reverse().find((n) => soloAsistiendo >= n.desde)
-    return { porCompromiso, soloAsistiendo: Math.min(soloAsistiendo, a.tope), faltanParaTope, nivel }
+    const cerrar = (bruto: number) => Math.max(a.piso, Math.min(a.tope, bruto))
+    const nivel = (m: number) => [...NIVELES].reverse().find((n) => m >= n.desde)
+    const victorias = Math.round(partidos * 0.6) // temporada normal: se gana algo más de la mitad
+    const banca = cerrar(a.base + partidos * (a.pts_asistir + a.pts_puntual) + victorias * a.pts_victoria)
+    const titular = cerrar(banca + partidos * a.pts_titular)
+    return {
+      victorias,
+      banca: { media: banca, nivel: nivel(banca) },
+      titular: { media: titular, nivel: nivel(titular) },
+      faltanParaTope: Math.max(0, a.tope - titular),
+    }
   }, [a, partidos])
 
   const guardar = async () => {
@@ -145,12 +162,18 @@ function AjustesDeCarta() {
             <span>partidos:</span>
           </div>
           <p className="text-sm text-slate-700">
-            Quien va a todos y siempre a la hora suma <b>{simulacion.porCompromiso}</b> puntos y termina en{' '}
-            <b className="text-brand-700">{simulacion.soloAsistiendo}</b>
-            {simulacion.nivel && <> — carta <b>{simulacion.nivel.nombre}</b></>}.{' '}
+            Ganando <b>{simulacion.victorias}</b> de esos partidos, quien va a todos y siempre a la hora pero
+            entra desde la banca termina en{' '}
+            <b className="text-brand-700">{simulacion.banca.media}</b>
+            {simulacion.banca.nivel && <> — carta <b>{simulacion.banca.nivel.nombre}</b></>}. El mismo jugador,
+            de titular fijo, termina en <b className="text-brand-700">{simulacion.titular.media}</b>
+            {simulacion.titular.nivel && <> — carta <b>{simulacion.titular.nivel.nombre}</b></>}.
+          </p>
+          <p className="mt-1 text-sm text-slate-700">
             {simulacion.faltanParaTope > 0
-              ? <>Le faltan <b>{simulacion.faltanParaTope}</b> puntos de goles, asistencias o votos para llegar al máximo.</>
-              : <>Ya alcanza el máximo solo con asistir, sin necesidad de jugar bien.</>}
+              ? <>Para llegar al máximo le faltan <b>{simulacion.faltanParaTope}</b> puntos, que solo salen de
+                  goles, asistencias, arcos en cero y de que sus compañeros lo voten.</>
+              : <>Ya llega al máximo sin jugar bien.</>}
           </p>
           {simulacion.faltanParaTope === 0 && (
             <p className="mt-2 text-xs font-medium text-amber-700">
