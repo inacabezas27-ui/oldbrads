@@ -77,7 +77,7 @@ export default function FifaCard({
             fontSize: mini ? '0.52rem' : '0.85rem',
             padding: mini ? '2px 3px' : '4px 6px',
             borderTop: `1px solid ${t.text}`,
-            background: 'rgba(255,255,255,0.16)',
+            background: t.placa,
           }}
         >
           {mini ? apellido.split(' ')[0] : apellido}

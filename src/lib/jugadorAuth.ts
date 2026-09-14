@@ -18,7 +18,12 @@ export const claveInicial = (usuario: string) => `${usuario.toLowerCase().trim()
    cumplida entera vale un punto, así que la escalera se sube jugando: yendo a
    todas y cumpliendo se llega a plata, siendo además titular a oro, y leyenda
    pide goles, asistencias y que los compañeros te voten. */
-export type Nivel = { nombre: string; desde: number; bg: string; text: string; sil: string }
+export type Nivel = {
+  nombre: string; desde: number; bg: string; text: string; sil: string
+  /** Fondo de la placa del nombre. Con foto detrás, un velo tenue no alcanza:
+   *  el nombre queda sobre la camiseta y no se lee. */
+  placa: string
+}
 
 export const NIVELES: Nivel[] = [
   {
@@ -27,6 +32,7 @@ export const NIVELES: Nivel[] = [
     bg: 'linear-gradient(160deg,#e8c9a0 0%,#c98f52 45%,#9c6428 100%)',
     text: '#3c2410',
     sil: 'rgba(60,36,16,0.22)',
+    placa: 'rgba(255,250,244,0.82)',
   },
   {
     nombre: 'Plata',
@@ -34,6 +40,7 @@ export const NIVELES: Nivel[] = [
     bg: 'linear-gradient(160deg,#f2f4f7 0%,#cfd6e2 45%,#9aa6b8 100%)',
     text: '#26303f',
     sil: 'rgba(38,48,63,0.20)',
+    placa: 'rgba(255,255,255,0.84)',
   },
   {
     nombre: 'Oro',
@@ -41,6 +48,7 @@ export const NIVELES: Nivel[] = [
     bg: 'linear-gradient(160deg,#faecb4 0%,#ecce78 42%,#d3ab44 100%)',
     text: '#3a2e0a',
     sil: 'rgba(58,46,10,0.22)',
+    placa: 'rgba(255,251,235,0.84)',
   },
   {
     nombre: 'Leyenda',
@@ -48,6 +56,7 @@ export const NIVELES: Nivel[] = [
     bg: 'linear-gradient(160deg,#2a3b63 0%,#111d36 45%,#05090f 100%)',
     text: '#f0cf7c',
     sil: 'rgba(240,207,124,0.20)',
+    placa: 'rgba(5,9,15,0.78)',
   },
 ]
 
