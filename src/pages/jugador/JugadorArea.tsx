@@ -830,6 +830,7 @@ export default function JugadorArea() {
   const [citado, setCitado] = useState<Partido | null>(null)
   const [enVotacion, setEnVotacion] = useState<Partido | null>(null)
   const [encuestasAbiertas, setEncuestasAbiertas] = useState(0)
+  const [ptsEncuesta, setPtsEncuesta] = useState(1)
   // Lo que el jugador tiene pendiente, para avisarle apenas entra.
   const [miConfirmacion, setMiConfirmacion] = useState<Respuesta | null>(null)
   const [votoPendiente, setVotoPendiente] = useState(false)
@@ -850,6 +851,13 @@ export default function JugadorArea() {
     supabase.from('pub_plantel').select('*').then(({ data }) =>
       setPlantel(((data as Jugador[]) ?? []).sort((a, b) => nombreCompleto(a).localeCompare(nombreCompleto(b)))),
     )
+  }, [session])
+
+  // Lo que vale responder una encuesta, para poder decirlo en el aviso.
+  useEffect(() => {
+    if (!session) return
+    supabase.from('ajustes_carta').select('pts_encuesta').eq('id', 1).maybeSingle()
+      .then(({ data }) => setPtsEncuesta(Number((data as { pts_encuesta: number } | null)?.pts_encuesta ?? 1)))
   }, [session])
 
   // Cuántas encuestas abiertas le faltan por responder (para el punto verde).
@@ -941,7 +949,7 @@ export default function JugadorArea() {
   }
   if (encuestasAbiertas > 0) {
     avisos.push({
-      texto: `Tienes ${encuestasAbiertas} ${encuestasAbiertas === 1 ? 'encuesta' : 'encuestas'} del club sin responder.`,
+      texto: `Tienes ${encuestasAbiertas} ${encuestasAbiertas === 1 ? 'encuesta' : 'encuestas'} del club sin responder. ${encuestasAbiertas === 1 ? 'Suma' : 'Suman'} ${fmtPts(ptsEncuesta * encuestasAbiertas)} a tu carta.`,
       accion: 'Responder',
       ir: 'votaciones',
     })
@@ -1023,7 +1031,10 @@ export default function JugadorArea() {
           <div className="space-y-8">
             <PostPartido partido={enVotacion} userId={user!.id} jugadorId={jugadorId} plantelCompleto={plantel} />
             <div className="border-t border-white/10 pt-6">
-              <p className="mb-3 text-xs font-bold uppercase tracking-wide" style={{ color: BRONCE }}>Encuestas del club</p>
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: BRONCE }}>Encuestas del club</p>
+              <p className="mb-3 mt-0.5 text-xs text-slate-400">
+                Cada una que respondes suma <b className="text-white">{fmtPts(ptsEncuesta)}</b> a tu carta.
+              </p>
               <EncuestasJugador plantel={plantel.filter((j) => !j.es_dt)} />
             </div>
           </div>

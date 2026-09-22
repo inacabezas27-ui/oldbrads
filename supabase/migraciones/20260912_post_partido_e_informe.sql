@@ -156,3 +156,15 @@ drop function if exists public.actualizar_mis_datos(
 
 comment on view public.pub_plantel is
   'Vista del plantel para la app de jugadores: solo columnas no sensibles. Es SECURITY DEFINER a propósito, porque jugadores tiene RLS de directiva. Revocada para anon.';
+
+-- ============================================================
+-- 22 de septiembre de 2026: la_encuesta_del_club_vale_un_punto
+--
+-- Responder una encuesta del club pasa de 0,5 a 1 punto. El problema hoy no
+-- es el fútbol, es que parte del plantel no entra a la plataforma; un punto
+-- entero por votar es el incentivo más directo que hay.
+--
+-- No toca la encuesta del post partido: esa se paga con pts_vota, porque va
+-- en el mismo formulario que el top 5.
+-- ============================================================
+update public.ajustes_carta set pts_encuesta = 1.00, actualizado_en = now() where id = 1;
