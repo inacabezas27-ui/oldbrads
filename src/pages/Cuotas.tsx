@@ -25,7 +25,10 @@ export default function Cuotas() {
     }
     setLoading(true)
     const [j, c, p] = await Promise.all([
-      supabase.from('jugadores').select('*').eq('activo', true).order('apellido_paterno'),
+      // El DT está en el plantel pero no paga cuota: no entra en la grilla ni
+      // en los cobros que se generan. Si algún día hay más exentos, esto pasa
+      // a ser una marca propia en la ficha y no el rol de entrenador.
+      supabase.from('jugadores').select('*').eq('activo', true).eq('es_dt', false).order('apellido_paterno'),
       supabase.from('cobros').select('*').order('fecha', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('pagos').select('*'),
     ])
@@ -248,7 +251,8 @@ export default function Cuotas() {
             <Input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} />
           </Field>
           <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-            Se generará el cobro para los <b>{jugadores.length}</b> jugadores activos. Luego marcas quién pagó en la grilla.
+            Se generará el cobro para los <b>{jugadores.length}</b> jugadores que pagan cuota. Luego marcas quién
+            pagó en la grilla. El cuerpo técnico no entra: está en el plantel pero no paga.
           </p>
         </div>
         <div className="mt-6 flex justify-end gap-2">

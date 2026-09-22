@@ -40,11 +40,16 @@ export default function Dashboard() {
     return m
   }, [pagos])
 
+  /* Ojo: "plantel activo" y "quienes pagan cuota" no son la misma lista. El
+     cuerpo técnico entra en el plantel y no paga; contarlo acá inflaba lo por
+     cobrar y lo dejaba figurando como deudor. */
+  const quienesPagan = useMemo(() => jugadores.filter((j) => !j.es_dt), [jugadores])
+
   const stats = useMemo(() => {
     const recaudadoCuotas = pagos.filter((p) => p.pagado).reduce((a, p) => a + p.monto, 0)
-    // pendiente sobre jugadores activos
+    // pendiente solo sobre quienes pagan cuota
     let pendiente = 0
-    for (const j of jugadores) {
+    for (const j of quienesPagan) {
       for (const c of cobros) {
         const p = pagoMap.get(`${j.id}|${c.id}`)
         if (p) pendiente += p.pagado ? 0 : p.monto
@@ -55,17 +60,17 @@ export default function Dashboard() {
     const egresos = movs.filter((m) => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
     const saldo = recaudadoCuotas + ingresosManuales - egresos
     return { recaudadoCuotas, pendiente, saldo, egresos, ingresosManuales }
-  }, [jugadores, cobros, pagos, movs, pagoMap])
+  }, [quienesPagan, cobros, pagos, movs, pagoMap])
 
   // Cuota del mes actual
   const cuotaMesActual = cobros.find((c) => c.tipo === 'cuota' && c.periodo === periodoActual())
   const deudoresMes = useMemo(() => {
     if (!cuotaMesActual) return []
-    return jugadores.filter((j) => {
+    return quienesPagan.filter((j) => {
       const p = pagoMap.get(`${j.id}|${cuotaMesActual.id}`)
       return !p?.pagado
     })
-  }, [cuotaMesActual, jugadores, pagoMap])
+  }, [cuotaMesActual, quienesPagan, pagoMap])
 
   const chartData = useMemo(
     () =>
@@ -74,7 +79,7 @@ export default function Dashboard() {
         .map((c) => {
           let recaudado = 0
           let esperado = 0
-          for (const j of jugadores) {
+          for (const j of quienesPagan) {
             const p = pagoMap.get(`${j.id}|${c.id}`)
             const monto = p ? p.monto : c.monto
             esperado += monto
@@ -82,7 +87,7 @@ export default function Dashboard() {
           }
           return { mes: periodoLabel(c.periodo).replace(/ \d+$/, ''), recaudado, esperado }
         }),
-    [cobros, jugadores, pagoMap],
+    [cobros, quienesPagan, pagoMap],
   )
 
   if (loading) return <Spinner />
@@ -94,7 +99,7 @@ export default function Dashboard() {
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Saldo en caja" value={clp(stats.saldo)} tone={stats.saldo >= 0 ? 'brand' : 'bad'} />
         <StatCard label="Recaudado en cuotas" value={clp(stats.recaudadoCuotas)} tone="good" />
-        <StatCard label="Por cobrar" value={clp(stats.pendiente)} tone="bad" hint="Cuotas pendientes del plantel activo" />
+        <StatCard label="Por cobrar" value={clp(stats.pendiente)} tone="bad" hint="Cuotas pendientes de quienes pagan cuota" />
         <StatCard label="Jugadores activos" value={num(jugadores.length)} />
       </div>
 
