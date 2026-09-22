@@ -85,7 +85,12 @@ function CopiarNomina({ partido, nomina }: { partido: Partido; nomina: Jugador[]
   const [copiado, setCopiado] = useState(false)
   const texto = [
     `Old Brads ${partido.es_local ? 'vs' : '@'} ${partido.rival}`,
-    [fechaLarga(partido.fecha), partido.hora, partido.cancha].filter(Boolean).join(' · '),
+    [
+      fechaLarga(partido.fecha),
+      partido.hora_citacion ? `citación ${partido.hora_citacion}` : null,
+      partido.hora ? `juega ${partido.hora}` : null,
+      partido.cancha,
+    ].filter(Boolean).join(' · '),
     '',
     `NÓMINA (${nomina.length})`,
     ...nomina.map((j) => `${j.numero_camiseta ?? '—'}. ${nombreCompleto(j)}`),
@@ -128,10 +133,14 @@ export default function Partidos() {
   const [jugadores, setJugadores] = useState<Jugador[]>([])
   const [loading, setLoading] = useState(true)
 
-  // nuevo partido
-  const [nuevoOpen, setNuevoOpen] = useState(false)
+  /* Un solo formulario para crear y para editar: los partidos se cargan
+     rápido antes de la fecha y casi siempre falta un dato, así que tiene que
+     poder corregirse sin borrar y volver a crear (borrar se lleva la citación,
+     los votos y las estadísticas). */
+  const VACIO = { rival: '', temporada_id: '', fecha: hoyISO(), hora_citacion: '', hora: '', cancha: '', es_local: 'true', fase: 'Liga' }
+  const [editando, setEditando] = useState<Partido | 'nuevo' | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ rival: '', temporada_id: '', fecha: hoyISO(), hora: '', cancha: '', es_local: 'true', fase: 'Liga' })
+  const [form, setForm] = useState(VACIO)
 
   // detalle
   const [detalle, setDetalle] = useState<Partido | null>(null)
@@ -160,32 +169,52 @@ export default function Partidos() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
-  const crearPartido = async () => {
-    if (!form.rival.trim()) return
+  const abrirFormulario = (p?: Partido) => {
+    setForm(p ? {
+      rival: p.rival ?? '',
+      temporada_id: p.temporada_id ?? '',
+      fecha: p.fecha ?? '',
+      hora_citacion: p.hora_citacion ?? '',
+      hora: p.hora ?? '',
+      cancha: p.cancha ?? '',
+      es_local: String(p.es_local),
+      fase: p.fase ?? 'Liga',
+    } : VACIO)
+    setEditando(p ?? 'nuevo')
+  }
+
+  const guardarPartido = async () => {
+    if (!form.rival.trim() || !editando) return
     setSaving(true)
-    const { data: partido } = await supabase
-      .from('partidos')
-      .insert({
-        rival: form.rival.trim(),
-        temporada_id: form.temporada_id || null,
-        fecha: form.fecha || null,
-        hora: form.hora || null,
-        cancha: form.cancha || null,
-        es_local: form.es_local === 'true',
-        fase: form.fase,
-        estado: 'citacion',
-      })
-      .select()
-      .single()
-    if (partido) {
-      // Al crear el partido queda citado todo el plantel: nadie queda fuera
-      // por omisión. La nómina se arma después, con las confirmaciones.
-      const cit = jugadores.map((j) => ({ partido_id: partido.id, jugador_id: j.id, citado: true }))
-      if (cit.length) await supabase.from('partido_jugadores').insert(cit)
+    const datos = {
+      rival: form.rival.trim(),
+      temporada_id: form.temporada_id || null,
+      fecha: form.fecha || null,
+      hora_citacion: form.hora_citacion || null,
+      hora: form.hora || null,
+      cancha: form.cancha || null,
+      es_local: form.es_local === 'true',
+      fase: form.fase,
     }
+
+    if (editando === 'nuevo') {
+      const { data: partido } = await supabase
+        .from('partidos').insert({ ...datos, estado: 'citacion' }).select().single()
+      if (partido) {
+        // Al crear el partido queda citado todo el plantel: nadie queda fuera
+        // por omisión. La nómina se arma después, con las confirmaciones.
+        const cit = jugadores.map((j) => ({ partido_id: partido.id, jugador_id: j.id, citado: true }))
+        if (cit.length) await supabase.from('partido_jugadores').insert(cit)
+      }
+    } else {
+      await supabase.from('partidos').update(datos).eq('id', editando.id)
+      // Si el detalle está abierto sobre este mismo partido, que no quede viejo.
+      setDetalle((d) => (d && d.id === editando.id ? { ...d, ...datos } : d))
+    }
+
     setSaving(false)
-    setNuevoOpen(false)
-    setForm({ rival: '', temporada_id: '', fecha: hoyISO(), hora: '', cancha: '', es_local: 'true', fase: 'Liga' })
+    setEditando(null)
+    setForm(VACIO)
     load()
   }
 
@@ -232,9 +261,12 @@ export default function Partidos() {
   }
 
   const eliminarPartido = async (p: Partido) => {
-    if (!confirm(`¿Eliminar el partido vs ${p.rival}?`)) return
+    // Borrar un partido se lleva por delante la citación, los votos y las
+    // estadísticas de esa fecha, así que el aviso dice exactamente eso.
+    if (!confirm(`¿Eliminar el partido con ${p.rival}?\n\nSe borran también la citación, la asistencia, los goles y los votos de esa fecha. No se puede deshacer.`)) return
     await supabase.from('partidos').delete().eq('id', p.id)
     setDetalle(null)
+    setEditando(null)
     load()
   }
 
@@ -351,7 +383,7 @@ export default function Partidos() {
           <h1 className="text-2xl font-black text-ink-900">Partidos</h1>
           <p className="text-sm text-slate-500">{partidos.length} partidos · citación, resultado y votación</p>
         </div>
-        <Button onClick={() => setNuevoOpen(true)}>+ Nuevo partido</Button>
+        <Button onClick={() => abrirFormulario()}>+ Nuevo partido</Button>
       </div>
 
       {partidos.length === 0 ? (
@@ -373,13 +405,20 @@ export default function Partidos() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-ink-900">{titulo(p)}</p>
                   <p className="text-xs text-slate-400">
-                    {fecha(p.fecha)}{p.hora ? ` · ${p.hora}` : ''} · {p.fase}{p.cancha ? ` · ${p.cancha}` : ''}
+                    {fecha(p.fecha)}
+                    {p.hora_citacion ? ` · citación ${p.hora_citacion}` : ''}
+                    {p.hora ? ` · juega ${p.hora}` : ''}
+                    {' · '}{p.fase}{p.cancha ? ` · ${p.cancha}` : ''}
                   </p>
+                  {!p.hora && !p.hora_citacion && (
+                    <p className="text-xs font-medium text-amber-600">Sin horario cargado</p>
+                  )}
                 </div>
                 {p.estado === 'votacion' && <Badge tone="amber">Votación abierta</Badge>}
                 {r === 'ganado' && <Badge tone="green">Ganado</Badge>}
                 {r === 'empatado' && <Badge tone="slate">Empate</Badge>}
                 {r === 'perdido' && <Badge tone="red">Perdido</Badge>}
+                <Button variant="ghost" onClick={() => abrirFormulario(p)}>Editar</Button>
                 <Button variant="secondary" onClick={() => abrirDetalle(p)}>Abrir</Button>
               </Card>
             )
@@ -387,8 +426,12 @@ export default function Partidos() {
         </div>
       )}
 
-      {/* Nuevo partido */}
-      <Modal open={nuevoOpen} onClose={() => setNuevoOpen(false)} title="Nuevo partido">
+      {/* Crear o editar */}
+      <Modal
+        open={!!editando}
+        onClose={() => setEditando(null)}
+        title={editando && editando !== 'nuevo' ? `Editar · Old Brads vs ${editando.rival}` : 'Nuevo partido'}
+      >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Rival *"><Input value={form.rival} onChange={(e) => set('rival', e.target.value)} placeholder="Ej. Old Boys" /></Field>
           <Field label="Temporada">
@@ -398,8 +441,13 @@ export default function Partidos() {
             </Select>
           </Field>
           <Field label="Fecha"><Input type="date" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} /></Field>
-          <Field label="Hora"><Input value={form.hora} onChange={(e) => set('hora', e.target.value)} placeholder="Ej. 11:15" /></Field>
           <Field label="Cancha"><Input value={form.cancha} onChange={(e) => set('cancha', e.target.value)} placeholder="Ej. Cancha 3" /></Field>
+          <Field label="Hora de citación">
+            <Input type="time" value={form.hora_citacion} onChange={(e) => set('hora_citacion', e.target.value)} />
+          </Field>
+          <Field label="Hora del partido">
+            <Input type="time" value={form.hora} onChange={(e) => set('hora', e.target.value)} />
+          </Field>
           <Field label="Localía">
             <Select value={form.es_local} onChange={(e) => set('es_local', e.target.value)}>
               <option value="true">Local</option>
@@ -412,9 +460,21 @@ export default function Partidos() {
             </Select>
           </Field>
         </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setNuevoOpen(false)}>Cancelar</Button>
-          <Button onClick={crearPartido} disabled={saving || !form.rival.trim()}>{saving ? 'Creando…' : 'Crear partido'}</Button>
+        <p className="mt-3 text-xs text-slate-400">
+          La <b>citación</b> es la hora de llegar a la cancha y es la que ven los jugadores para saber si llegaron
+          a la hora. La <b>hora del partido</b> es el pitazo inicial.
+        </p>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+          {editando && editando !== 'nuevo' ? (
+            <Button variant="ghost" onClick={() => eliminarPartido(editando)}>Eliminar partido</Button>
+          ) : <span />}
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => setEditando(null)}>Cancelar</Button>
+            <Button onClick={guardarPartido} disabled={saving || !form.rival.trim()}>
+              {saving ? 'Guardando…' : editando === 'nuevo' ? 'Crear partido' : 'Guardar cambios'}
+            </Button>
+          </div>
         </div>
       </Modal>
 
@@ -517,7 +577,7 @@ export default function Partidos() {
                     <th className="px-2 py-2 text-center">Confirmó</th>
                     <th className="px-2 py-2 text-center">Citado</th>
                     <th className="px-2 py-2 text-center" title="Fue al partido, aunque no haya jugado">Fue</th>
-                    <th className="px-2 py-2 text-center" title="A la hora, tarde, o no llegó">Llegada</th>
+                    <th className="px-2 py-2 text-center" title="Respecto de la hora de citación: a la hora, tarde, o no llegó">Llegada</th>
                     <th className="px-2 py-2 text-center">Jugó</th>
                     <th className="px-2 py-2 text-center">Titular</th>
                     <th className="px-2 py-2 text-center">Goles</th>

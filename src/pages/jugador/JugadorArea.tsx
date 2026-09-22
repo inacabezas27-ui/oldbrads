@@ -103,7 +103,7 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
   const [abierto, setAbierto] = useState(false)
   const porFecha: [string, number][] = [
     ['Fuiste al partido', a.pts_asistir],
-    ['Llegaste a la hora', a.pts_puntual],
+    ['Llegaste a la hora de citación', a.pts_puntual],
     ['Fuiste titular', a.pts_titular],
     ['Fuiste igual sin poder jugar', a.pts_apoyo],
     ['Dijiste a tiempo si ibas', a.pts_responde],
@@ -321,8 +321,24 @@ function CabeceraPartido({ partido, etiqueta }: { partido: Partido; etiqueta: st
       <p className="text-xs uppercase tracking-widest" style={{ color: BRONCE }}>{etiqueta}</p>
       <p className="mt-1 text-xl font-black text-white">Old Brads {partido.es_local ? 'vs' : '@'} {partido.rival}</p>
       <p className="text-sm text-slate-400">
-        {fmtFecha(partido.fecha)}{partido.hora ? ` · ${partido.hora}` : ''}{partido.cancha ? ` · ${partido.cancha}` : ''}
+        {fmtFecha(partido.fecha)}{partido.cancha ? ` · ${partido.cancha}` : ''}
       </p>
+      {(partido.hora_citacion || partido.hora) && (
+        <div className="mt-3 flex justify-center gap-3">
+          {partido.hora_citacion && (
+            <div className="rounded-lg bg-white/10 px-3 py-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-slate-400">Citación</p>
+              <p className="text-base font-black text-white">{partido.hora_citacion}</p>
+            </div>
+          )}
+          {partido.hora && (
+            <div className="rounded-lg bg-white/5 px-3 py-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-slate-400">Juega</p>
+              <p className="text-base font-black text-white">{partido.hora}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

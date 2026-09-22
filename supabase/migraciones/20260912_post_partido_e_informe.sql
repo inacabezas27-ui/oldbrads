@@ -168,3 +168,16 @@ comment on view public.pub_plantel is
 -- en el mismo formulario que el top 5.
 -- ============================================================
 update public.ajustes_carta set pts_encuesta = 1.00, actualizado_en = now() where id = 1;
+
+-- ============================================================
+-- 22 de septiembre de 2026: hora_de_citacion_del_partido
+--
+-- Son dos horas distintas y había una sola, con la ambigüedad obvia: quien
+-- leía "14:30" no sabía si era la hora de llegar o la de jugar.
+--   hora          = a qué hora empieza el partido
+--   hora_citacion = a qué hora hay que estar en la cancha
+-- La citación es además la referencia de la puntualidad.
+-- ============================================================
+alter table public.partidos add column if not exists hora_citacion text;
+comment on column public.partidos.hora is 'Hora de inicio del partido.';
+comment on column public.partidos.hora_citacion is 'Hora de llegada a la cancha. Es la referencia para la puntualidad.';

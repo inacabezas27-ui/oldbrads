@@ -153,7 +153,10 @@ export type Partido = {
   id: string
   temporada_id: string | null
   fecha: string | null
+  /** Hora de inicio del partido. */
   hora: string | null
+  /** Hora de llegada a la cancha. Es la referencia de la puntualidad. */
+  hora_citacion: string | null
   rival: string
   cancha: string | null
   es_local: boolean
