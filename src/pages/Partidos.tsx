@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { CONFIRMACIONES, nombreCompleto, nombreCorto, type Confirmacion, type EstadoPartido, type Jugador, type Partido, type PartidoJugador, type Temporada } from '../lib/types'
+import { CONFIRMACIONES, nombreCorto, type Confirmacion, type EstadoPartido, type Jugador, type Partido, type PartidoJugador, type Temporada } from '../lib/types'
 import { fecha, hoyISO } from '../lib/format'
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Spinner } from '../components/ui'
 
@@ -81,34 +81,63 @@ function fechaLarga(iso: string | null) {
 
 /** La nómina en texto plano, con nombre completo y número de camiseta: se pega
     tal cual en el grupo o se le pasa a quien arma las imágenes de Instagram. */
-function CopiarNomina({ partido, nomina }: { partido: Partido; nomina: Jugador[] }) {
-  const [copiado, setCopiado] = useState(false)
-  const texto = [
-    `Old Brads ${partido.es_local ? 'vs' : '@'} ${partido.rival}`,
-    [
-      fechaLarga(partido.fecha),
-      partido.hora_citacion ? `citación ${partido.hora_citacion}` : null,
-      partido.hora ? `juega ${partido.hora}` : null,
-      partido.cancha,
-    ].filter(Boolean).join(' · '),
+function textoNomina(partido: Partido, nomina: Jugador[]) {
+  // El DT va aparte: en la gráfica de la nómina nunca lleva número.
+  const jugadores = nomina.filter((j) => !j.es_dt)
+  const cuerpo = nomina.filter((j) => j.es_dt)
+  const cuando = [
+    fechaLarga(partido.fecha),
+    partido.hora_citacion ? `citación ${partido.hora_citacion}` : null,
+    partido.hora ? `juega ${partido.hora}` : null,
+    partido.cancha,
+  ].filter(Boolean).join(' · ')
+
+  return [
+    `OLD BRADS ${partido.es_local ? 'vs' : '@'} ${partido.rival.toUpperCase()}`,
+    cuando,
     '',
-    `NÓMINA (${nomina.length})`,
-    ...nomina.map((j) => `${j.numero_camiseta ?? '—'}. ${nombreCompleto(j)}`),
+    `NÓMINA (${jugadores.length})`,
+    ...jugadores.map((j) => `${String(j.numero_camiseta ?? '—').padStart(2, ' ')}  ${j.nombres} ${j.apellido_paterno}`),
+    ...(cuerpo.length ? ['', ...cuerpo.map((j) => `DT  ${j.nombres} ${j.apellido_paterno}`)] : []),
   ].join('\n')
+}
+
+/** Copiar para pegar en el grupo, y descargar para pasarle el archivo al CM. */
+function AccionesNomina({ partido, nomina }: { partido: Partido; nomina: Jugador[] }) {
+  const [copiado, setCopiado] = useState(false)
+  const vacia = nomina.length === 0
 
   const copiar = async () => {
     try {
-      await navigator.clipboard.writeText(texto)
+      await navigator.clipboard.writeText(textoNomina(partido, nomina))
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2000)
     } catch {
       setCopiado(false)
     }
   }
+
+  const descargar = () => {
+    const blob = new Blob([textoNomina(partido, nomina)], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Nomina Old Brads vs ${partido.rival} - ${partido.fecha ?? 'sin fecha'}.txt`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
-    <Button variant="secondary" onClick={copiar} disabled={nomina.length === 0}>
-      {copiado ? '✓ Copiada' : `Copiar nómina (${nomina.length})`}
-    </Button>
+    <>
+      <Button variant="secondary" onClick={copiar} disabled={vacia}>
+        {copiado ? '✓ Copiada' : 'Copiar nómina'}
+      </Button>
+      <Button variant="secondary" onClick={descargar} disabled={vacia}>
+        Descargar citados ({nomina.filter((j) => !j.es_dt).length})
+      </Button>
+    </>
   )
 }
 
@@ -328,13 +357,19 @@ export default function Partidos() {
   const citados = useMemo(() => rows.filter((r) => r.citado), [rows])
   /* La nómina para copiar: los citados y, mientras nadie lo esté, quienes
      confirmaron que van. Ordenada por número de camiseta. */
+  /* La nómina son los que VAN, ordenados por camiseta.
+     Con la citación abierta eso son los que confirmaron que sí: mirar `citado`
+     no sirve, porque al crear el partido queda citado todo el plantel y la
+     lista saldría con los 26. Cerrada la citación, `citado` ya quedó reducido
+     a la nómina real y esa manda. */
   const nomina = useMemo(() => {
-    const base = rows.filter((r) => r.citado)
-    const lista = base.length ? base : rows.filter((r) => r.confirmado === 'si')
-    return lista
+    const van = detalle?.estado === 'citacion'
+      ? rows.filter((r) => r.confirmado === 'si')
+      : rows.filter((r) => r.citado)
+    return van
       .map((r) => r.jugador)
-      .sort((a, b) => (a.numero_camiseta ?? 99) - (b.numero_camiseta ?? 99))
-  }, [rows])
+      .sort((a, b) => (a.numero_camiseta ?? 999) - (b.numero_camiseta ?? 999))
+  }, [rows, detalle?.estado])
   const confirmaciones = useMemo(
     () => ({
       si: rows.filter((r) => r.confirmado === 'si').length,
@@ -492,7 +527,7 @@ export default function Partidos() {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <p className="flex-1 text-xs text-slate-500">{info.ayuda}</p>
                 {info.avanzar && <Button onClick={avanzar}>{info.avanzar}</Button>}
-                <CopiarNomina partido={detalle} nomina={nomina} />
+                <AccionesNomina partido={detalle} nomina={nomina} />
                 {detalle.estado === 'votacion' && (
                   <>
                     <span className="text-xs font-semibold text-slate-500">{votantes} votaron</span>
