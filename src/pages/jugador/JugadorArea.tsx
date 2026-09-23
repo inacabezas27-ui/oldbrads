@@ -66,6 +66,9 @@ function JugadorLogin() {
           </button>
           <Link to="/" className="block text-center text-xs text-slate-400 hover:text-slate-600">← Volver al sitio</Link>
         </form>
+        <div className="mt-4 overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
+          <InstalarApp />
+        </div>
       </div>
     </div>
   )
