@@ -12,6 +12,7 @@ import Crest from '../../components/Crest'
 import FifaCard from '../../components/FifaCard'
 import MisDatos from './MisDatos'
 import EncuestasJugador, { CampoPregunta, type Valor } from './Encuestas'
+import InstalarApp from '../../components/InstalarApp'
 import { BRONCE } from '../../lib/marca'
 
 
@@ -986,6 +987,8 @@ export default function JugadorArea() {
         <button onClick={signOut} className="rounded-lg bg-white/10 px-3 py-1.5 text-sm font-semibold hover:bg-white/20">Salir</button>
       </header>
 
+      <InstalarApp />
+
       {avisos.length > 0 && (
         <div className="border-b border-white/10 bg-white/5 px-5 py-3">
           <div className="mx-auto max-w-md space-y-2">
@@ -1044,6 +1047,28 @@ export default function JugadorArea() {
           <ProximoPartido partido={citado} jugadorId={jugadorId} plantel={plantel} onRespuesta={setMiConfirmacion} />
         )}
         {tab === 'votaciones' && (
+          perfil && !perfil.clave_cambiada ? (
+            /* El voto define quién sube de carta, así que tiene que ser de
+               quien dice ser. Con la clave que reparte el club —usuario más
+               el año— cualquiera del plantel puede entrar como otro y votar
+               por él. Mirar la carta o confirmar si vas sigue abierto: el
+               candado va solo donde importa. */
+            <div className="rounded-2xl bg-amber-400/10 p-6 text-center ring-1 ring-amber-400/30">
+              <p className="text-lg font-black text-white">Primero cambia tu clave</p>
+              <p className="mx-auto mt-2 max-w-xs text-sm text-slate-300">
+                Sigues con la clave que te dio el club, y esa se la puede imaginar cualquiera del equipo. Para que
+                nadie pueda votar por ti, cámbiala y vuelve.
+              </p>
+              <button
+                onClick={() => setTab('datos')}
+                className="mt-4 rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+                style={{ background: BRONCE }}
+              >
+                Cambiar mi clave
+              </button>
+              <p className="mt-3 text-xs text-slate-500">Toma diez segundos y se hace una sola vez.</p>
+            </div>
+          ) : (
           <div className="space-y-8">
             <PostPartido partido={enVotacion} userId={user!.id} jugadorId={jugadorId} plantelCompleto={plantel} />
             <div className="border-t border-white/10 pt-6">
@@ -1054,6 +1079,7 @@ export default function JugadorArea() {
               <EncuestasJugador plantel={plantel.filter((j) => !j.es_dt)} />
             </div>
           </div>
+          )
         )}
       </div>
     </div>

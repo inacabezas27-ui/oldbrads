@@ -21,7 +21,6 @@ import Encuestas from './pages/Encuestas'
 import Estadisticas from './pages/Estadisticas'
 import Configuracion from './pages/Configuracion'
 import Certificados from './pages/Certificados'
-import { Importar } from './pages/modulos'
 
 /** La raíz no es una página: es el cruce que manda a cada uno a lo suyo. */
 function Inicio() {
@@ -66,7 +65,6 @@ export default function App() {
         <Route path="/cuotas" element={<Cuotas />} />
         <Route path="/caja" element={<Caja />} />
         <Route path="/cuotas-liga" element={<CuotasLiga />} />
-        <Route path="/importar" element={<Importar />} />
         <Route path="/configuracion" element={<Configuracion />} />
       </Route>
       <Route path="*" element={<Navigate to="/jugadores" replace />} />
