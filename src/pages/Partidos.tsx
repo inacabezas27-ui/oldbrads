@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { CONFIRMACIONES, nombreCorto, type Confirmacion, type EstadoPartido, type Jugador, type Partido, type PartidoJugador, type Temporada } from '../lib/types'
 import { fecha, hoyISO } from '../lib/format'
-import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Spinner } from '../components/ui'
+import { Badge, Button, Card, EmptyState, Field, HoraInput, Input, Modal, Select, Spinner } from '../components/ui'
 
 const FASES = ['Liga', 'Cuartos de final', 'Semifinal', 'Final', 'Amistoso']
 
@@ -169,6 +169,7 @@ export default function Partidos() {
   const VACIO = { rival: '', temporada_id: '', fecha: hoyISO(), hora_citacion: '', hora: '', cancha: '', es_local: 'true', fase: 'Liga' }
   const [editando, setEditando] = useState<Partido | 'nuevo' | null>(null)
   const [saving, setSaving] = useState(false)
+  const [errorForm, setErrorForm] = useState<string | null>(null)
   const [form, setForm] = useState(VACIO)
 
   // detalle
@@ -209,6 +210,7 @@ export default function Partidos() {
       es_local: String(p.es_local),
       fase: p.fase ?? 'Liga',
     } : VACIO)
+    setErrorForm(null)
     setEditando(p ?? 'nuevo')
   }
 
@@ -226,22 +228,32 @@ export default function Partidos() {
       fase: form.fase,
     }
 
+    let error = null
     if (editando === 'nuevo') {
-      const { data: partido } = await supabase
+      const r = await supabase
         .from('partidos').insert({ ...datos, estado: 'citacion' }).select().single()
-      if (partido) {
+      error = r.error
+      if (r.data) {
         // Al crear el partido queda citado todo el plantel: nadie queda fuera
         // por omisión. La nómina se arma después, con las confirmaciones.
-        const cit = jugadores.map((j) => ({ partido_id: partido.id, jugador_id: j.id, citado: true }))
+        const cit = jugadores.map((j) => ({ partido_id: r.data.id, jugador_id: j.id, citado: true }))
         if (cit.length) await supabase.from('partido_jugadores').insert(cit)
       }
     } else {
-      await supabase.from('partidos').update(datos).eq('id', editando.id)
+      const r = await supabase.from('partidos').update(datos).eq('id', editando.id)
+      error = r.error
       // Si el detalle está abierto sobre este mismo partido, que no quede viejo.
-      setDetalle((d) => (d && d.id === editando.id ? { ...d, ...datos } : d))
+      if (!error) setDetalle((d) => (d && d.id === editando.id ? { ...d, ...datos } : d))
     }
 
     setSaving(false)
+    // Si falló, el formulario se queda abierto con los datos escritos: cerrarlo
+    // en silencio era lo que hacía parecer que se había guardado.
+    if (error) {
+      setErrorForm(error.message)
+      return
+    }
+    setErrorForm(null)
     setEditando(null)
     setForm(VACIO)
     load()
@@ -478,10 +490,10 @@ export default function Partidos() {
           <Field label="Fecha"><Input type="date" value={form.fecha} onChange={(e) => set('fecha', e.target.value)} /></Field>
           <Field label="Cancha"><Input value={form.cancha} onChange={(e) => set('cancha', e.target.value)} placeholder="Ej. Cancha 3" /></Field>
           <Field label="Hora de citación">
-            <Input type="time" value={form.hora_citacion} onChange={(e) => set('hora_citacion', e.target.value)} />
+            <HoraInput value={form.hora_citacion} onChange={(v) => set('hora_citacion', v)} />
           </Field>
           <Field label="Hora del partido">
-            <Input type="time" value={form.hora} onChange={(e) => set('hora', e.target.value)} />
+            <HoraInput value={form.hora} onChange={(v) => set('hora', v)} />
           </Field>
           <Field label="Localía">
             <Select value={form.es_local} onChange={(e) => set('es_local', e.target.value)}>
@@ -499,6 +511,12 @@ export default function Partidos() {
           La <b>citación</b> es la hora de llegar a la cancha y es la que ven los jugadores para saber si llegaron
           a la hora. La <b>hora del partido</b> es el pitazo inicial.
         </p>
+
+        {errorForm && (
+          <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+            No se pudo guardar: {errorForm}
+          </p>
+        )}
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
           {editando && editando !== 'nuevo' ? (

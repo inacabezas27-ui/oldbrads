@@ -157,3 +157,35 @@ export function Spinner() {
     </div>
   )
 }
+
+/**
+ * Hora en dos selectores en vez de <input type="time">.
+ *
+ * El input nativo se dibuja en formato 12 horas según el idioma del sistema y
+ * exige los tres segmentos: si se escribe 10:00 y no se elige AM o PM, el
+ * campo queda inválido y `value` devuelve texto vacío. La hora se perdía sin
+ * ningún aviso al guardar. Con dos selectores no hay estado a medias: o hay
+ * hora completa, o no hay ninguna.
+ */
+export function HoraInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [hh = '', mm = ''] = value ? value.split(':') : []
+  const armar = (h: string, m: string) => onChange(h && m ? `${h}:${m}` : '')
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select value={hh} onChange={(e) => armar(e.target.value, mm || '00')} aria-label="Hora">
+        <option value="">--</option>
+        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+          <option key={h} value={h}>{h}</option>
+        ))}
+      </Select>
+      <span className="font-semibold text-slate-400">:</span>
+      <Select value={mm} onChange={(e) => armar(hh, e.target.value)} disabled={!hh} aria-label="Minutos">
+        <option value="">--</option>
+        {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map((m) => (
+          <option key={m} value={m}>{m}</option>
+        ))}
+      </Select>
+    </div>
+  )
+}
