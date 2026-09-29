@@ -62,7 +62,8 @@ export default function LaminaCartas({ jugadores, onCerrar }: { jugadores: Jugad
 
       <div className="ob-no-imprimir sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-5 py-3 backdrop-blur">
         <p className="text-sm text-slate-500">
-          {orden.length} cartas. Elige <b className="text-ink-900">Guardar como PDF</b> en el destino de la impresión.
+          Las {orden.length} cartas del plantel. Elige <b className="text-ink-900">Guardar como PDF</b> en el
+          destino de la impresión y ese archivo es el que mandas al grupo.
         </p>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={onCerrar}>Cerrar</Button>
