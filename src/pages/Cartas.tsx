@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { nombreCompleto, type Jugador } from '../lib/types'
 import { Button, Field, Input, Modal, Select, Spinner } from '../components/ui'
 import FifaCard from '../components/FifaCard'
+import LaminaCartas from '../components/LaminaCartas'
 
 export default function Cartas() {
   const [jugadores, setJugadores] = useState<Jugador[]>([])
@@ -10,6 +11,7 @@ export default function Cartas() {
   const [edit, setEdit] = useState<Jugador | null>(null)
   const [saving, setSaving] = useState(false)
   const [orden, setOrden] = useState<'media' | 'nombre'>('media')
+  const [lamina, setLamina] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -45,6 +47,8 @@ export default function Cartas() {
   }
 
   if (loading) return <Spinner />
+  // La hoja sale con las mismas cartas y en el mismo orden que están a la vista.
+  if (lamina) return <LaminaCartas jugadores={ordenados} onCerrar={() => setLamina(false)} />
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -59,6 +63,9 @@ export default function Cartas() {
             <option value="media">Mejor media</option>
             <option value="nombre">Nombre</option>
           </Select>
+          <Button variant="secondary" onClick={() => setLamina(true)} disabled={ordenados.length === 0}>
+            Descargar en PDF
+          </Button>
         </div>
       </div>
 

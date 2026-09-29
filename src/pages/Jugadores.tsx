@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { supabase, supabaseConfigurado } from '../lib/supabase'
 import { nombreCompleto, type Jugador } from '../lib/types'
 import { Badge, Button, Card, EmptyState, Field, Input, Modal, Select, Spinner } from '../components/ui'
-import LaminaCartas from '../components/LaminaCartas'
 
 type FormState = Partial<Jugador>
 
@@ -30,7 +29,6 @@ export default function Jugadores() {
   const [saving, setSaving] = useState(false)
   const [soloActivos, setSoloActivos] = useState(true)
   const [query, setQuery] = useState('')
-  const [lamina, setLamina] = useState(false)
 
   const load = async () => {
     if (!supabaseConfigurado) {
@@ -98,8 +96,6 @@ export default function Jugadores() {
 
   const set = (k: keyof FormState, v: unknown) => setForm((f) => ({ ...f, [k]: v }))
 
-  if (lamina) return <LaminaCartas jugadores={filtered} onCerrar={() => setLamina(false)} />
-
   return (
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -107,12 +103,7 @@ export default function Jugadores() {
           <h1 className="text-2xl font-black text-ink-900">Plantel</h1>
           <p className="text-sm text-slate-500">{filtered.length} jugadores</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setLamina(true)} disabled={filtered.length === 0}>
-            Cartas en PDF
-          </Button>
-          <Button onClick={openNew}>+ Nuevo jugador</Button>
-        </div>
+        <Button onClick={openNew}>+ Nuevo jugador</Button>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
