@@ -80,9 +80,9 @@ type FilaConfirmacion = PartidoJugador & { jugador: Jugador }
  * se ve desordenada—. Y van los apodos, que es como se llaman entre ellos.
  */
 function textoNomina(partido: Partido, filas: FilaConfirmacion[]) {
-  // Apodo y, si no puso, el apellido: es la misma regla de la carta, y es
-  // como se nombran en el grupo (Argandoña, Acevedo, Vos), no por el nombre.
-  const como = (r: FilaConfirmacion) => r.jugador.apodo?.trim() || r.jugador.apellido_paterno
+  // Nombre y apellido, no el apodo: de esta lista salen después las
+  // publicaciones, y ahí la nómina tiene que ir con el nombre de verdad.
+  const como = (r: FilaConfirmacion) => nombreCorto(r.jugador)
   const de = (...valores: Confirmacion[]) =>
     filas.filter((r) => valores.includes(r.confirmado) && !r.jugador.es_dt).map(como)
 
