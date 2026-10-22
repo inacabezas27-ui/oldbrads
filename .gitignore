@@ -39,3 +39,12 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Material comercial e investigación de auspiciadores: el repo es público.
+registros/
+web-auspicios/
+web-propuesta/
+web-booz/
+scripts/
+src/data/auspiciadores.json
+src/pages/Auspiciadores.tsx

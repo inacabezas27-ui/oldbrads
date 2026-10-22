@@ -286,6 +286,8 @@ export type AjustesCarta = {
   pts_voto: number
   pts_extra: number
   /** Al DT lo miden los resultados del equipo, no las estadísticas personales. */
+  /** Jugar vale por sí solo: el suplente que entra suma, no solo el titular. */
+  pts_jugar: number
   /** Ser titular pesa igual que ir o llegar a la hora. */
   pts_titular: number
   /** El resultado es de todos los que jugaron, no solo de los que marcaron. */

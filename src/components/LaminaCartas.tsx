@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { NIVELES, nivelDe } from '../lib/jugadorAuth'
 import { nombreCompleto, type Jugador } from '../lib/types'
@@ -6,6 +6,7 @@ import { NAVY } from '../lib/marca'
 import Crest from './Crest'
 import FifaCard from './FifaCard'
 import { Button } from './ui'
+import { descargarLaminaCartas, descargarLaminaPDF } from '../lib/laminaImagen'
 
 /**
  * Todas las cartas juntas en una hoja, para guardarla como PDF y mandarla.
@@ -37,6 +38,7 @@ const CSS_IMPRESION = `
 `
 
 export default function LaminaCartas({ jugadores, onCerrar }: { jugadores: Jugador[]; onCerrar: () => void }) {
+  const [bajando, setBajando] = useState<null | 'pdf' | 'png'>(null)
   // De mayor a menor: la gracia de la lámina es ver quién va arriba.
   const orden = [...jugadores].sort(
     (a, b) => (b.carta_overall ?? 0) - (a.carta_overall ?? 0) || nombreCompleto(a).localeCompare(nombreCompleto(b)),
@@ -62,12 +64,30 @@ export default function LaminaCartas({ jugadores, onCerrar }: { jugadores: Jugad
 
       <div className="ob-no-imprimir sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-5 py-3 backdrop-blur">
         <p className="text-sm text-slate-500">
-          Las {orden.length} cartas del plantel. Elige <b className="text-ink-900">Guardar como PDF</b> en el
-          destino de la impresión y ese archivo es el que mandas al grupo.
+          Las {orden.length} cartas del plantel, con foto y media. El archivo se baja solo: no hay que
+          pasar por el diálogo de impresión.
         </p>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={onCerrar}>Cerrar</Button>
-          <Button onClick={() => window.print()}>Descargar PDF</Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setBajando('png')
+              try { await descargarLaminaCartas(orden) } finally { setBajando(null) }
+            }}
+            disabled={!!bajando}
+          >
+            {bajando === 'png' ? 'Armando…' : 'Descargar imagen'}
+          </Button>
+          <Button
+            onClick={async () => {
+              setBajando('pdf')
+              try { await descargarLaminaPDF(orden) } finally { setBajando(null) }
+            }}
+            disabled={!!bajando}
+          >
+            {bajando === 'pdf' ? 'Armando el PDF…' : 'Descargar PDF'}
+          </Button>
         </div>
       </div>
 

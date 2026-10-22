@@ -75,7 +75,7 @@ function JugadorLogin() {
 }
 
 type Desglose = {
-  asistio: number; puntual: number; titular: number; apoyo: number; responde: number; vota: number
+  asistio: number; puntual: number; jugo: number; titular: number; apoyo: number; responde: number; vota: number
   victorias: number; empates: number; vallas: number
   goles: number; asistencias: number; votos: number; extra: number
   encuestas: number; cuotasAlDia: boolean
@@ -108,6 +108,7 @@ function Reglas({ a, esArquero }: { a: AjustesCarta; esArquero: boolean }) {
   const porFecha: [string, number][] = [
     ['Fuiste al partido', a.pts_asistir],
     ['Llegaste a la hora de citación', a.pts_puntual],
+    ['Jugaste el partido', a.pts_jugar],
     ['Fuiste titular', a.pts_titular],
     ['Fuiste igual sin poder jugar', a.pts_apoyo],
     ['Dijiste a tiempo si ibas', a.pts_responde],
@@ -203,6 +204,7 @@ function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string 
       setD({
         asistio: filas.filter((f) => f.asistio === true).length,
         puntual: filas.filter((f) => f.asistio === true && f.puntual === true).length,
+        jugo: filas.filter((f) => f.jugo).length,
         titular: filas.filter((f) => f.jugo && f.titular).length,
         apoyo: filas.filter((f) => f.asistio === true && !f.jugo).length,
         responde: filas.filter((f) => f.confirmado !== null && !f.pen_sin_responder).length,
@@ -267,6 +269,7 @@ function MiCarta({ jugador, userId }: { jugador: Jugador | null; userId: string 
           </div>
           <Fila label="Fuiste al partido" cantidad={d.asistio} puntos={d.asistio * ajustes.pts_asistir} />
           <Fila label="Llegaste a la hora" cantidad={d.puntual} puntos={d.puntual * ajustes.pts_puntual} />
+          {!jugador.es_dt && <Fila label="Jugaste el partido" cantidad={d.jugo} puntos={d.jugo * ajustes.pts_jugar} />}
           {!jugador.es_dt && <Fila label="Fuiste titular" cantidad={d.titular} puntos={d.titular * ajustes.pts_titular} />}
           {!jugador.es_dt && <Fila label="Fuiste igual sin poder jugar" cantidad={d.apoyo} puntos={d.apoyo * ajustes.pts_apoyo} />}
           <Fila label="Dijiste a tiempo si ibas" cantidad={d.responde} puntos={d.responde * ajustes.pts_responde} />
